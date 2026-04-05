@@ -259,4 +259,5 @@ so.on("tbReveal",function(d){tbReveal(d)});
 home();
 </script></body></html>
 `;
+app.get("/",(q,s)=>s.type("html").send(HTML));
 srv.listen(PORT,function(){console.log("TimeTap on :"+PORT)});
