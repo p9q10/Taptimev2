@@ -1,3 +1,234 @@
-server.js
-package.json
-public/index.html
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>TimeTap</title>
+<script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,'SF Pro Display','Segoe UI',system-ui,sans-serif;background:#0B0B1E;color:#F1F0FF;min-height:100dvh}
+#app{max-width:440px;margin:0 auto;padding:14px 16px 40px}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+input{font-family:inherit;outline:none}
+.card{background:#141432;border-radius:16px;border:1px solid #2D2D5E;padding:16px}
+.btn{border-radius:14px;padding:16px 36px;color:#fff;font-size:15px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(135deg,#8B5CF6,#EC4899);border:none;box-shadow:0 0 10px #8B5CF630;width:100%;max-width:300px;transition:transform .12s}
+.btn:active{transform:scale(.94)}.btn:disabled{opacity:.3}
+.btn2{border-radius:10px;padding:10px 18px;color:#fff;font-size:13px;font-weight:600;background:#1C1C42;border:1px solid #2D2D5E}
+.mc{width:100%;padding:18px 20px;margin-bottom:12px;display:flex;align-items:center;gap:14px;text-align:left;border-radius:18px;border:none;color:#fff}
+.mc:active{transform:scale(.97)}
+.ct{text-align:center}
+.bz{width:175px;height:175px;border-radius:50%;border:3px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:16px;font-weight:900;letter-spacing:4px;color:#fff}
+.gt{background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#sd{position:fixed;top:8px;right:8px;width:10px;height:10px;border-radius:50%;z-index:9999;background:#F43F5E}
+@keyframes pop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes up{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes sL{from{transform:translateX(-14px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes cPop{0%{transform:scale(.5);opacity:0}50%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.12);opacity:.75}}
+@keyframes ripple{0%{transform:scale(.8);opacity:.5}100%{transform:scale(2);opacity:0}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes conf{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(220px) rotate(720deg);opacity:0}}
+@keyframes dotP{0%,80%,100%{opacity:.3}40%{opacity:1}}
+</style></head><body><div id="sd"></div><div id="app"></div>
+<script>
+// Audio
+var _ac;function ac(){if(!_ac)_ac=new(window.AudioContext||window.webkitAudioContext)();if(_ac.state==="suspended")_ac.resume();return _ac}
+function bp(f,d,w,v){try{var c=ac(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type=w||"sine";o.frequency.value=f;g.gain.setValueAtTime(v||.18,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d);o.start();o.stop(c.currentTime+d)}catch(e){}}
+function sfxTap(){bp(880,.06)}function sfxTick(){bp(660,.1,"square",.12)}function sfxGo(){bp(880,.12,"square",.2);setTimeout(function(){bp(1100,.16,"square",.16)},70)}function sfxGood(){bp(523,.1);setTimeout(function(){bp(659,.1)},80);setTimeout(function(){bp(784,.16)},160)}function sfxBad(){bp(380,.12,"sawtooth",.08)}function sfxWin(){var fs=[523,659,784,1047,784,1047];fs.forEach(function(f,i){setTimeout(function(){bp(f,.14)},i*100)})}function sfxDrama(){var fs=[200,250,300,350,400,500,600,800];fs.forEach(function(f,i){setTimeout(function(){bp(f,.1,"triangle",.08+i*.02)},i*100)})}
+function vb(p){try{navigator.vibrate(p)}catch(e){}}
+
+// Socket
+var so=io(location.origin,{reconnection:true,reconnectionAttempts:30});
+var myId,st={},rc="",isH=false,myN="",myA="😎",t0=0,bst="ready";
+so.on("connect",function(){myId=so.id;document.getElementById("sd").style.background="#10B981"});
+so.on("disconnect",function(){document.getElementById("sd").style.background="#F43F5E"});
+
+// Helpers
+var AV=["😎","😀","🤖","🐯","🐸","🔥","🚀","👻","🧠","⚡"];
+var selAv="😎";
+function $(id){return document.getElementById(id)}
+function grade(ms){if(ms<=30)return{t:"PERFEKT!",c:"#F59E0B"};if(ms<=100)return{t:"Stark!",c:"#10B981"};if(ms<=250)return{t:"Gut!",c:"#8B5CF6"};if(ms<=500)return{t:"Knapp",c:"#A5A3C8"};return{t:"Daneben",c:"#F43F5E"}}
+function medal(r){return r===1?"\uD83E\uDD47":r===2?"\uD83E\uDD48":r===3?"\uD83E\uDD49":"#"+r}
+function confetti(){var d=document.createElement("div");d.style.cssText="position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:999";var cols=["#8B5CF6","#EC4899","#F59E0B","#10B981","#06B6D4","#F97316"];for(var i=0;i<30;i++){var c=document.createElement("div");c.style.cssText="position:absolute;top:-12px;left:"+Math.random()*100+"%;width:"+(5+Math.random()*8)+"px;height:"+(5+Math.random()*8)+"px;border-radius:"+(i%3===0?"50%":"2px")+";background:"+cols[i%6]+";animation:conf "+(1.2+Math.random()*1.3)+"s ease "+Math.random()*1.3+"s forwards";d.appendChild(c)}document.body.appendChild(d);setTimeout(function(){d.remove()},4000)}
+
+// ═══ SCREENS ═══
+function home(){
+$("app").innerHTML='<div style="text-align:center;padding-top:20px;animation:fadeIn .5s ease">'+
+'<div style="font-size:50px;animation:float 3s ease infinite;margin-bottom:4px">\u23F1\uFE0F</div>'+
+'<h1 class="gt" style="font-size:42px;font-weight:900;margin:0 0 4px;line-height:1.1">TimeTap</h1>'+
+'<p style="color:#A5A3C8;font-size:14px;margin-bottom:24px">Stoppe die Zeit. Triff die Zielzeit.</p>'+
+'<button class="mc" style="background:linear-gradient(135deg,#10B981,#06B6D4)" onclick="sfxTap();setup(\'normal\')"><span style="font-size:28px">\uD83C\uDFAF</span><span style="margin-left:8px"><b style="font-size:17px">Normal</b><br><span style="font-size:12px;opacity:.75">Zielzeit sichtbar</span></span></button>'+
+'<button class="mc" style="background:linear-gradient(135deg,#8B5CF6,#EC4899)" onclick="sfxTap();setup(\'zeit\')"><span style="font-size:28px">\uD83E\uDDE0</span><span style="margin-left:8px"><b style="font-size:17px">Zeitgef\u00fchl</b><br><span style="font-size:12px;opacity:.75">Kein Timer \u2013 sch\u00e4tze im Kopf</span></span></button>'+
+'<button class="mc" style="background:linear-gradient(135deg,#F43F5E,#F97316)" onclick="sfxTap();setup(\'trust\')"><span style="font-size:28px">\uD83D\uDD75\uFE0F</span><span style="margin-left:8px"><b style="font-size:17px">Trust Breaker</b><br><span style="font-size:12px;opacity:.75">4\u20136 Spieler \u00b7 Rollen</span></span></button>'+
+'<div style="margin-top:16px;color:#5D5B7A;font-size:10px">TimeTap v5.1</div></div>'}
+
+function setup(mode){
+window._mode=mode;selAv=AV[0];
+var label=mode==="trust"?"Trust Breaker":mode==="zeit"?"Zeitgef\u00fchl":"Normal";
+var avHtml=AV.map(function(a,i){return '<button onclick="selAv=\''+a+'\';renderAv()" style="width:42px;height:42px;border-radius:12px;font-size:22px;background:'+(selAv===a?"#8B5CF630":"#1C1C42")+';border:'+(selAv===a?"2px solid #8B5CF6":"1px solid #2D2D5E")+'">'+a+'</button>'}).join("");
+$("app").innerHTML='<div style="animation:up .4s ease">'+
+'<button class="btn2" onclick="home()">\u2190 Home</button>'+
+'<div class="ct" style="margin:20px 0 14px"><div style="font-size:18px;font-weight:800">'+label+'</div><div style="color:#A5A3C8;font-size:12px">'+(mode==="trust"?"4\u20136":"2\u201310")+' Spieler</div></div>'+
+'<div class="card" style="margin-bottom:14px"><input id="ni" placeholder="Dein Name..." maxlength="12" style="width:100%;background:transparent;border:none;border-bottom:2px solid #2D2D5E;padding:10px 0;color:#F1F0FF;font-size:18px;font-weight:800;text-align:center">'+
+'<div style="font-size:10px;color:#5D5B7A;letter-spacing:2px;text-transform:uppercase;text-align:center;margin:16px 0 10px">AVATAR W\u00c4HLEN</div>'+
+'<div id="avGrid" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">'+avHtml+'</div></div>'+
+'<div style="display:flex;gap:14px;justify-content:center;margin-top:10px">'+
+'<div class="ct"><button onclick="doCreate()" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#10B981,#06B6D4);font-size:28px;color:#fff;box-shadow:0 0 14px #10B98130">+</button><div style="font-size:12px;color:#A5A3C8;margin-top:6px;font-weight:600">Erstellen</div></div>'+
+'<div class="ct"><button onclick="doJoinScreen()" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#06B6D4);font-size:28px;color:#fff;box-shadow:0 0 14px #38BDF830">\u2192</button><div style="font-size:12px;color:#A5A3C8;margin-top:6px;font-weight:600">Beitreten</div></div>'+
+'</div></div>'}
+
+function renderAv(){
+var html=AV.map(function(a){return '<button onclick="selAv=\''+a+'\';renderAv()" style="width:42px;height:42px;border-radius:12px;font-size:22px;background:'+(selAv===a?"#8B5CF630":"#1C1C42")+';border:'+(selAv===a?"2px solid #8B5CF6":"1px solid #2D2D5E")+'">'+a+'</button>'}).join("");
+$("avGrid").innerHTML=html}
+
+function doCreate(){
+var n=$("ni").value.trim();if(!n)return;sfxTap();myN=n;myA=selAv;isH=true;
+so.emit("create",{name:n,avatar:selAv,mode:window._mode,rounds:3},function(r){if(r.ok){rc=r.code;lobby()}else alert(r.err)})}
+
+function doJoinScreen(){
+var n=$("ni").value.trim();if(!n)return;sfxTap();myN=n;myA=selAv;isH=false;
+$("app").innerHTML='<div class="ct" style="animation:up .4s ease;padding-top:30px">'+
+'<div style="font-size:36px;margin-bottom:8px">\uD83D\uDD11</div>'+
+'<div style="font-size:18px;font-weight:800;margin-bottom:14px">Raum beitreten</div>'+
+'<input id="ci" placeholder="CODE" maxlength="6" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')" style="width:100%;max-width:260px;background:#1C1C42;border:2px solid #2D2D5E;border-radius:14px;padding:16px;color:#F1F0FF;font-size:26px;font-weight:900;font-family:monospace;text-align:center;letter-spacing:8px">'+
+'<div id="jerr" style="color:#F43F5E;font-size:12px;margin-top:8px"></div>'+
+'<button class="btn" style="margin-top:12px" onclick="doJoin()">BEITRETEN</button>'+
+'<br><button class="btn2" style="margin-top:12px" onclick="setup(window._mode)">\u2190 Zur\u00fcck</button></div>'}
+
+function doJoin(){
+var c=$("ci").value;if(c.length<6)return;
+so.emit("join",{code:c,name:myN,avatar:myA},function(r){if(r.ok){rc=r.code;lobby()}else{$("jerr").textContent=r.err;sfxBad()}})}
+
+function lobby(){
+$("app").innerHTML='<div class="ct" style="animation:up .4s ease">'+
+'<button onclick="try{navigator.clipboard.writeText(\''+rc+'\')}catch(e){}" class="card" style="cursor:pointer;display:inline-block;padding:12px 28px;margin-bottom:16px;background:#1C1C42">'+
+'<div style="font-size:9px;color:#5D5B7A;letter-spacing:2px;text-transform:uppercase">RAUM-CODE</div>'+
+'<div style="font-size:34px;font-weight:900;color:#F59E0B;font-family:monospace;letter-spacing:8px">'+rc+'</div>'+
+'<div style="font-size:10px;color:#8B5CF6;margin-top:2px">\uD83D\uDCCB Antippen zum Kopieren</div></button>'+
+'<div id="pl" class="card" style="margin-bottom:14px;text-align:left"></div>'+
+(isH?'<div style="display:flex;gap:10px;align-items:center;justify-content:center;margin-bottom:14px"><span style="font-size:12px;color:#A5A3C8">Runden:</span><button class="btn2" onclick="this.style.background=\'linear-gradient(135deg,#8B5CF6,#EC4899)\'">3</button></div>':'')+ 
+'<div style="font-size:11px;color:#A5A3C8;margin-bottom:14px;animation:pulse 1.5s ease infinite">Warte auf Spieler...</div>'+
+(isH?'<button id="sb" class="btn" onclick="so.emit(\'start\')">SPIEL STARTEN</button>':'<div class="card ct"><div style="color:#A5A3C8;font-size:12px">Warte auf den Host...</div></div>')+
+'</div>';upl()}
+
+function upl(){
+var el=$("pl");if(!el)return;
+var html='<div style="font-size:10px;color:#5D5B7A;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">SPIELER ('+(st.players?st.players.length:0)+')</div>';
+(st.players||[]).forEach(function(p,i){
+html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;'+(i<(st.players||[]).length-1?'border-bottom:1px solid #2D2D5E':'')+'">';
+html+='<span style="font-size:24px">'+(p.avatar||"\uD83D\uDE0E")+'</span>';
+html+='<span style="flex:1;font-weight:700;font-size:14px">'+p.name;
+if(p.host)html+=' <span style="font-size:9px;color:#F59E0B;background:#F59E0B20;padding:2px 6px;border-radius:4px;font-weight:700">HOST</span>';
+if(p.id===myId)html+=' <span style="font-size:9px;color:#8B5CF6;background:#8B5CF620;padding:2px 6px;border-radius:4px;font-weight:700">DU</span>';
+html+='</span></div>'});
+el.innerHTML=html;
+var sb=$("sb");if(sb)sb.disabled=(st.players?st.players.length:0)<(st.mode==="trust"?4:2)}
+
+function buzzer(tgt){
+bst="ready";t0=0;
+var tgtHtml=tgt!==null?'<div class="card" style="display:inline-block;padding:12px 28px;border-left:3px solid #8B5CF6;margin-bottom:16px"><div style="font-size:9px;color:#5D5B7A;letter-spacing:2px;text-transform:uppercase">ZIELZEIT</div><div style="font-size:44px;font-weight:900;font-family:monospace">'+tgt.toFixed(1)+'s</div></div>':'<div style="font-size:14px;color:#06B6D4;margin-bottom:16px">Zielzeit ist versteckt</div>';
+$("app").innerHTML='<div class="ct" style="animation:up .3s ease;padding-top:20px"><div style="color:#A5A3C8;font-size:12px;margin-bottom:14px">Runde '+st.round+'</div>'+tgtHtml+
+'<button id="bz" class="bz" style="background:linear-gradient(135deg,#8B5CF6,#EC4899);box-shadow:0 0 24px #8B5CF630" onclick="doBuzz()"><span id="bzl">START</span></button></div>'}
+
+function doBuzz(){
+if(bst==="ready"){t0=Date.now();bst="timing";$("bz").style.background="linear-gradient(135deg,#F97316,#F43F5E)";$("bz").style.boxShadow="0 0 24px #F43F5E30";$("bzl").textContent="STOP";vb(25)}
+else if(bst==="timing"){var el=Math.max(.01,(Date.now()-t0)/1000);bst="done";$("bz").style.background="linear-gradient(135deg,#5D5B7A,#555)";$("bz").style.boxShadow="none";$("bzl").textContent="\u2713";sfxTap();vb([50,25,50]);so.emit("submit",{time:el});
+setTimeout(function(){var d=document.createElement("div");d.style.cssText="text-align:center;margin-top:20px;animation:fadeIn .3s ease";d.innerHTML='<div style="font-size:14px;color:#A5A3C8;animation:pulse 1.5s ease infinite">Warte auf andere...</div>';$("app").firstChild.appendChild(d)},300)}}
+
+function zeitGo(){
+var c=3;$("app").innerHTML='<div class="ct" style="padding:50px 0"><div style="font-size:10px;color:#5D5B7A;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px">MACH DICH BEREIT</div><div id="cdn" style="font-size:96px;font-weight:900;background:linear-gradient(135deg,#6366F1,#8B5CF6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:cPop .3s ease">3</div></div>';
+sfxTick();vb(10);
+var iv=setInterval(function(){c--;var el=$("cdn");if(!el){clearInterval(iv);return}
+if(c>0){el.textContent=c;el.style.animation="none";void el.offsetHeight;el.style.animation="cPop .3s ease";sfxTick();vb(10)}
+else if(c===0){el.textContent="JETZT!";el.style.background="linear-gradient(135deg,#10B981,#06B6D4)";el.style.WebkitBackgroundClip="text";sfxGo();vb([50,25,50]);t0=Date.now()}
+else{clearInterval(iv);zeitRun()}},1e3)}
+
+function zeitRun(){
+$("app").innerHTML='<div class="ct" style="padding:40px 0;animation:fadeIn .6s ease"><div style="position:relative;width:150px;height:150px;margin:0 auto 18px"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid #06B6D422;animation:ripple 2s ease infinite"></div><div style="width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,#06B6D410,transparent 70%);display:flex;align-items:center;justify-content:center;animation:breathe 3s ease infinite"><div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);opacity:.5"></div></div></div><div style="font-size:16px;font-weight:700;color:#06B6D4">Z\u00e4hle mit...</div><div style="font-size:12px;color:#5D5B7A;margin-top:4px;font-style:italic">Timer l\u00e4uft seit "JETZT!"</div></div>'}
+
+function zeitEst(){
+sfxGood();vb([50,25,50]);
+$("app").innerHTML='<div class="ct" style="padding:14px 0;animation:up .4s ease"><div style="font-size:60px;font-weight:900;background:linear-gradient(135deg,#F97316,#F43F5E);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;animation:pop .3s ease">STOP!</div><div style="font-size:18px;font-weight:800;margin-bottom:16px">Wie lange war das?</div><div class="card" style="display:inline-block;padding:18px 24px;border-top:3px solid #06B6D4;max-width:240px"><div style="font-size:9px;color:#5D5B7A;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">DEINE SCH\u00c4TZUNG</div><input id="zi" type="text" inputmode="decimal" placeholder="0.00" style="width:130px;text-align:center;font-size:42px;font-weight:900;color:#F1F0FF;font-family:monospace;border:none;border-bottom:3px solid #2D2D5E;background:transparent"><span style="font-size:18px;color:#5D5B7A">s</span></div><br><button id="zb" class="btn" style="margin-top:16px" onclick="doZeitSubmit()">ABGEBEN</button></div>';
+setTimeout(function(){var i=$("zi");if(i)i.focus()},150)}
+
+function doZeitSubmit(){
+var g=parseFloat($("zi").value);if(isNaN(g)||g<=0)return;sfxTap();so.emit("submit",{time:g});$("zb").disabled=true;$("zb").textContent="WARTET..."}
+
+function results(data){
+var html='<div style="max-width:380px;margin:0 auto;animation:up .3s ease"><div class="ct" style="margin-bottom:14px"><div style="font-size:11px;color:#5D5B7A;letter-spacing:3px;text-transform:uppercase">RUNDE '+data.round+'</div><div style="font-size:12px;color:#A5A3C8;margin-top:4px">Ziel: '+data.target.toFixed(1)+'s</div></div>';
+data.results.forEach(function(r,i){var g=grade(r.ms);
+html+='<div class="card" style="display:flex;align-items:center;gap:10px;padding:11px 14px;margin-bottom:7px;border-left:3px solid '+(r.elim?"#F43F5E":g.c)+';background:'+(r.elim?"#F43F5E15":"#141432")+';animation:sL .4s ease '+i*.08+'s both">';
+html+='<span style="font-size:20px;width:30px;text-align:center">'+(r.elim?"\uD83D\uDC80":medal(r.rank))+'</span>';
+html+='<span style="flex:1"><b style="font-size:13px;color:'+(r.elim?"#F43F5E":"#F1F0FF")+(r.elim?";text-decoration:line-through":"")+'">'+r.name+(r.id===myId?" (Du)":"")+'</b><br><span style="font-size:11px;color:#A5A3C8;font-family:monospace">'+r.time.toFixed(3)+'s</span></span>';
+html+='<span style="font-family:monospace;font-weight:800;font-size:14px;color:'+g.c+'">'+r.ms+'ms</span></div>'});
+var el=data.results.filter(function(r){return r.elim})[0];
+if(el)html+='<div class="ct" style="color:#F43F5E;font-size:13px;font-weight:700;margin:8px 0;animation:shake .5s ease">\uD83D\uDC80 '+el.name+' ist raus!</div>';
+if(isH)html+='<div class="ct" style="margin-top:14px"><button class="btn" onclick="so.emit(\'nextRound\')">WEITER</button></div>';
+else html+='<div class="ct" style="margin-top:14px;color:#A5A3C8;font-size:12px;animation:pulse 1.5s ease infinite">Host dr\u00fcckt weiter...</div>';
+html+='</div>';$("app").innerHTML=html;sfxGood();vb(25)}
+
+function winner(data){
+confetti();
+$("app").innerHTML='<div class="ct" style="animation:pop .5s ease;padding-top:30px"><div style="font-size:60px;animation:float 2s ease infinite;margin-bottom:8px">\uD83C\uDFC6</div><div style="font-size:28px;font-weight:900;background:linear-gradient(135deg,#F59E0B,#FBBF24);-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+data.winner+'</div><div style="font-size:12px;color:#A5A3C8;margin-top:4px">gewinnt!</div><button class="btn" style="margin-top:24px" onclick="home()">HOME</button></div>';
+sfxWin();vb([25,40,25,40,70])}
+
+// Trust Breaker
+function roleReveal(role){
+var rc2=role==="fake"?"#F97316":role==="saboteur"?"#F43F5E":"#10B981";
+var label=role==="fake"?"\uD83C\uDFAD Fake":role==="saboteur"?"\uD83D\uDDE1\uFE0F Saboteur":"\u2705 Normal";
+var desc=role==="fake"?"\u00b10.4s pro Runde":role==="saboteur"?"1x sabotieren":"Entlarve die Betr\u00fcger!";
+$("app").innerHTML='<div class="ct" style="padding:30px 16px;animation:pop .4s ease"><div style="font-size:13px;color:#A5A3C8;margin-bottom:14px">Zeige niemandem!</div><button id="rv" class="card" onclick="doReveal(\''+role+'\',\''+rc2+'\',\''+label+'\',\''+desc+'\')" style="padding:28px 32px;cursor:pointer;border-style:dashed"><div style="font-size:14px;color:#A5A3C8">Antippen um Rolle zu sehen</div></button></div>';
+sfxDrama()}
+
+function doReveal(role,rc2,label,desc){
+$("rv").outerHTML='<div style="animation:pop .3s ease"><div class="card" style="padding:20px 24px;margin-bottom:16px;border-top:3px solid '+rc2+'"><div style="font-size:28px;font-weight:900;color:'+rc2+'">'+label+'</div><div style="font-size:11px;color:#A5A3C8;margin-top:6px">'+desc+'</div></div><div style="font-size:12px;color:#A5A3C8;animation:pulse 1.5s ease infinite">Warte auf Spielstart...</div></div>'}
+
+function fakePrompt(time){
+$("app").innerHTML='<div class="ct" style="padding:40px 16px;animation:pop .3s ease"><div style="font-size:22px;font-weight:800;color:#F97316;margin-bottom:8px">\uD83C\uDFAD Fake</div><div style="font-size:12px;color:#5D5B7A;margin-bottom:16px">Deine Zeit: '+time.toFixed(3)+'s</div><div style="display:flex;gap:10px;justify-content:center"><button class="btn2" style="background:linear-gradient(135deg,#6366F1,#8B5CF6)" onclick="so.emit(\'fakeAct\',{dir:\'minus\'});waitScreen()">-0.4s</button><button class="btn2" onclick="so.emit(\'fakeSkip\');waitScreen()">Skip</button><button class="btn2" style="background:linear-gradient(135deg,#F97316,#F43F5E)" onclick="so.emit(\'fakeAct\',{dir:\'plus\'});waitScreen()">+0.4s</button></div></div>'}
+
+function sabPrompt(targets){
+var html='<div class="ct" style="padding:40px 16px;animation:pop .3s ease"><div style="font-size:22px;font-weight:800;color:#F43F5E;margin-bottom:16px">\uD83D\uDDE1\uFE0F Sabotage</div>';
+targets.forEach(function(t){html+='<button class="card" style="width:100%;margin-bottom:8px;cursor:pointer;text-align:left" onclick="so.emit(\'sabAct\',{targetId:\''+t.id+'\'});waitScreen()"><b style="font-size:14px">'+t.name+'</b></button>'});
+html+='<button class="btn2" style="margin-top:6px" onclick="so.emit(\'sabSkip\');waitScreen()">Skip</button></div>';
+$("app").innerHTML=html}
+
+function waitScreen(){
+$("app").innerHTML='<div class="ct" style="padding:60px 16px;animation:fadeIn .4s ease"><div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px"><div style="width:8px;height:8px;border-radius:4px;background:#8B5CF6;animation:dotP 1.2s ease 0s infinite"></div><div style="width:8px;height:8px;border-radius:4px;background:#8B5CF6;animation:dotP 1.2s ease .2s infinite"></div><div style="width:8px;height:8px;border-radius:4px;background:#8B5CF6;animation:dotP 1.2s ease .4s infinite"></div></div><div style="font-size:14px;color:#A5A3C8">Berechne...</div></div>'}
+
+function voteScreen(players){
+window._vPlayers=players;window._vf=null;window._vs=null;
+var html='<div class="ct" style="padding:16px;animation:up .4s ease"><div class="gt" style="font-size:22px;font-weight:800;margin-bottom:14px">Abstimmung</div>';
+html+='<div style="font-size:14px;font-weight:700;margin-bottom:8px">Wer ist Fake?</div><div id="vf" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:14px">';
+players.filter(function(p){return p.id!==myId}).forEach(function(p){html+='<button class="card" style="padding:10px 16px" onclick="pickVote(\'f\',\''+p.id+'\',this)"><b style="font-size:13px">'+p.name+'</b></button>'});
+html+='</div><div style="font-size:14px;font-weight:700;margin-bottom:8px">Wer ist Saboteur?</div><div id="vs" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:16px">';
+players.filter(function(p){return p.id!==myId}).forEach(function(p){html+='<button class="card" style="padding:10px 16px" onclick="pickVote(\'s\',\''+p.id+'\',this)"><b style="font-size:13px">'+p.name+'</b></button>'});
+html+='</div><button class="btn" onclick="doVote()">ABSTIMMEN</button></div>';
+$("app").innerHTML=html}
+
+function pickVote(type,id,el){
+sfxTap();if(type==="f"){window._vf=id;var d=$("vf");d.querySelectorAll("button").forEach(function(b){b.style.background="#141432";b.style.borderColor="#2D2D5E"});el.style.background="#F9731620";el.style.borderColor="#F97316"}else{window._vs=id;var d2=$("vs");d2.querySelectorAll("button").forEach(function(b){b.style.background="#141432";b.style.borderColor="#2D2D5E"});el.style.background="#F43F5E20";el.style.borderColor="#F43F5E"}}
+
+function doVote(){if(!window._vf||!window._vs)return;so.emit("vote",{fakeGuess:window._vf,sabGuess:window._vs});waitScreen()}
+
+function tbReveal(data){
+confetti();
+var html='<div class="ct" style="padding:20px 12px;animation:pop .5s ease"><div style="font-size:24px;font-weight:900;margin-bottom:14px">Aufgedeckt!</div>';
+(st.players||[]).forEach(function(p,i){var role=(data.roles||{})[p.id]||"normal";var rc2=role==="fake"?"#F97316":role==="saboteur"?"#F43F5E":"#10B981";var label=role==="fake"?"\uD83C\uDFAD Fake":role==="saboteur"?"\uD83D\uDDE1\uFE0F Saboteur":"\u2705 Normal";
+html+='<div class="card" style="padding:14px 16px;margin-bottom:8px;border-left:4px solid '+rc2+';text-align:left;animation:sL .4s ease '+i*.1+'s both"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14px">'+p.name+(p.id===myId?" (Du)":"")+'</b><b style="font-size:12px;color:'+rc2+'">'+label+'</b></div></div>'});
+var wc=data.normalWin?"#10B981":"#F43F5E";
+html+='<div class="card" style="padding:16px;margin-top:12px;text-align:center;border-top:3px solid '+wc+'"><div style="font-size:18px;font-weight:900;color:'+wc+';margin-bottom:4px">'+(data.normalWin?"Normale gewinnen!":"Betr\u00fcger gewinnen!")+'</div><div style="font-size:11px;color:#A5A3C8">Fake '+(data.fakeFound?"enttarnt":"unentdeckt")+' ('+data.fV+'/'+data.maj+') \u00b7 Sab '+(data.sabFound?"enttarnt":"unentdeckt")+' ('+data.sV+'/'+data.maj+')</div></div>';
+html+='<button class="btn" style="margin-top:16px" onclick="home()">HOME</button></div>';
+$("app").innerHTML=html;sfxDrama();vb([25,40,25,40,70])}
+
+// Socket events
+so.on("state",function(s){st=s;if(st.status==="lobby")upl();if(st.status==="hidden")waitScreen()});
+so.on("roundStart",function(d){if(st.mode==="zeit")zeitGo();else buzzer(d.target)});
+so.on("zeitStop",function(){zeitEst()});
+so.on("roundResults",function(d){results(d)});
+so.on("gameEnd",function(d){winner(d)});
+so.on("role",function(d){roleReveal(d.role)});
+so.on("fakePrompt",function(d){fakePrompt(d.time)});
+so.on("sabPrompt",function(d){sabPrompt(d.targets)});
+so.on("voteStart",function(d){voteScreen(d.players)});
+so.on("tbReveal",function(d){tbReveal(d)});
+home();
+</script></body></html>
