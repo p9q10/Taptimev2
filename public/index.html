@@ -137,105 +137,547 @@ function soloNext(){var s=SS;if(s.rnd>=s.rounds){soloFinal();return}s.rnd++;s.bs
 function soloFinal(){var s=SS,tp=s.hist.reduce(function(a,h){return a+h.pts},0);confetti();var rows=s.hist.map(function(h,i){var g2=grade(h.ms);return'<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:12px;'+(i<s.hist.length-1?"border-bottom:1px solid "+T.ln:"")+'"><span style="color:'+T.sb+'">R'+h.r+'</span><span style="color:'+T.tx+';font-family:monospace">'+h.actual.toFixed(3)+'s</span><span style="font-family:monospace;font-weight:700;color:'+g2.c+'">'+h.ms+'ms</span><span style="color:'+A.am+';font-family:monospace">'+h.pts+'pt</span></div>'}).join("");$("app").innerHTML='<div style="animation:pop .5s ease"><div class="ct" style="margin-bottom:16px"><div style="font-size:56px;animation:float 2s ease infinite">\uD83C\uDFC6</div><div style="font-size:24px;font-weight:900;background:linear-gradient(135deg,'+A.am+',#FBBF24);-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+tp+' '+t("pts")+'</div></div><div style="'+cds("padding:14px;margin-bottom:14px")+'"><div style="font-size:9px;color:'+T.mt+';letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">'+t("allRnds")+'</div>'+rows+'</div><div class="ct"><button class="btn" onclick="home()">'+t("home")+'</button></div></div>';sfxWin();vb([25,40,25,40,70])}
 
 // ══════════════════════════════════════
-// PARTY MODE
-// ══════════════════════════════════════
-var PP={players:[],round:1,totalRnds:5,scores:[],cards:[],phase:"",mode:null,ci:0,wager:0,sab:null,results:[],target:0,crownIdx:-1,dareLoser:null,daresOn:true};
 
-function partyLobby(){
-PP.players=[];PP.round=1;PP.totalRnds=5;PP.daresOn=true;
-var pAv=AV[0],pCount=0;
-$("app").innerHTML='<div style="animation:up .4s ease"><button class="btn2" onclick="home()">\u2190 '+t("back")+'</button><div class="ct" style="margin:12px 0"><div style="font-size:36px">\uD83C\uDF89</div><div style="font-size:20px;font-weight:900;color:'+T.tx+'">'+t("party")+'</div></div>'+
-'<div style="'+cds("padding:14px 16px;margin-bottom:12px")+'"><input id="pn" placeholder="'+t("name")+'" maxlength="10" style="width:100%;background:transparent;border:none;border-bottom:2px solid '+T.ln+';padding:8px 0;color:'+T.tx+';font-size:16px;font-weight:800;text-align:center"><div id="pav" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center"></div><div class="ct" style="margin-top:10px"><button class="btn2" style="background:linear-gradient(135deg,'+A.em+','+A.cy+');border:none" onclick="partyAdd()">'+t("addP")+'</button></div></div>'+
-'<div id="plist" style="'+cds("padding:12px;margin-bottom:12px")+'"></div>'+
-'<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px"><span style="font-size:12px;color:'+T.sb+'">'+t("rnds")+':</span><button id="pr3" class="btn2" onclick="PP.totalRnds=3;updPR()" style="width:38px;height:38px;padding:0">3</button><button id="pr5" class="btn2" onclick="PP.totalRnds=5;updPR()" style="width:38px;height:38px;padding:0">5</button><button id="pr8" class="btn2" onclick="PP.totalRnds=8;updPR()" style="width:38px;height:38px;padding:0">8</button></div>'+
-'<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px"><span style="font-size:12px;color:'+T.sb+'">'+t("dareMode")+':</span><button id="pdr" class="btn2" onclick="PP.daresOn=!PP.daresOn;updPDR()"></button></div>'+
-'<button id="pstart" class="btn" onclick="partyStart()" disabled>'+t("start")+'</button></div>';
-renderPAv();updPList();updPR();updPDR()}
+// ══════════════════════════════════════════════════════
+// PARTY MODE — CLEAN STATE MACHINE
+// ══════════════════════════════════════════════════════
+//
+// States: LOBBY → ROUND_START → PLAYER_PASS → PLAYER_WAGER
+//       → PLAYER_SABOTAGE → PLAYER_PLAY → PLAYER_RESULT
+//       → ROUND_REVEAL → DARE → ROUND_START (loop) → GAME_END
+//
+// All state transitions go through partySetState(newState)
+// No direct function chains. No skipping.
+// ══════════════════════════════════════════════════════
 
-function renderPAv(){var g=$("pav");if(!g)return;g.innerHTML=AV.slice(0,10).map(function(a){return'<button onclick="window._pav=\''+a+'\';renderPAv()" style="width:36px;height:36px;border-radius:10px;font-size:18px;display:flex;align-items:center;justify-content:center;background:'+((window._pav||AV[0])===a?A.v+"30":T.ra)+';border:'+((window._pav||AV[0])===a?"2px solid "+A.v:"1px solid "+T.ln)+'">'+a+'</button>'}).join("")}
-function partyAdd(){var n=$("pn");if(!n||!n.value.trim()||PP.players.length>=8)return;sfxTap();PP.players.push({name:n.value.trim(),avatar:window._pav||AV[0]});n.value="";window._pav=AV[PP.players.length%AV.length];renderPAv();updPList()}
-function updPList(){var el=$("plist");if(!el)return;el.innerHTML='<div style="font-size:10px;color:'+T.mt+';letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">'+t("players")+' ('+PP.players.length+')</div>'+PP.players.map(function(p,i){return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;'+(i<PP.players.length-1?"border-bottom:1px solid "+T.ln:"")+'"><span style="font-size:22px">'+p.avatar+'</span><span style="flex:1;font-weight:700;font-size:14px;color:'+T.tx+'">'+p.name+'</span><button onclick="PP.players.splice('+i+',1);updPList()" style="background:none;border:none;color:'+A.ro+';cursor:pointer;font-size:14px">\u2715</button></div>'}).join("");var sb=$("pstart");if(sb)sb.disabled=PP.players.length<2}
-function updPR(){["pr3","pr5","pr8"].forEach(function(id,i){var b=$(id);if(b)b.style.background=[3,5,8][i]===PP.totalRnds?"linear-gradient(135deg,"+A.v+","+A.pk+")":T.ra})}
-function updPDR(){var b=$("pdr");if(b)b.innerHTML=PP.daresOn?"\uD83C\uDFA1 "+t("daresOn"):t("dares");if(b)b.style.background=PP.daresOn?"linear-gradient(135deg,"+A.ro+","+A.or+")":T.ra}
+var P={
+  state:"",          // current state
+  players:[],        // [{name,avatar}]
+  totalRnds:5,
+  daresOn:true,
+  round:0,           // current round 1-based
+  mode:null,         // "classic"|"reflex"|"blind"|"zeit"
+  target:0,          // target time for this round
+  ci:0,              // current player index
+  scores:[],         // cumulative scores per player
+  cards:[],          // sabotage cards per player [[card,card],...]
+  wager:0,           // current player's wager
+  sab:null,          // active sabotage card
+  results:[],        // this round's results [{idx,name,avatar,ms,score,wager,final,revenge}]
+  crownIdx:-1,       // who has the crown
+  lastPlaceIdx:-1,   // who was last place last round (gets 2x)
+  dareLoser:null     // who spins the dare wheel
+};
 
-function partyStart(){PP.round=1;PP.scores=PP.players.map(function(){return 0});PP.cards=PP.players.map(function(){return[randEl(SAB_TYPES),randEl(SAB_TYPES)]});PP.crownIdx=-1;partyRoulette()}
+var PARTY_MODES=["classic","reflex","blind","zeit"];
+var PARTY_MODE_IC={classic:"\uD83C\uDFAF",reflex:"\u26A1",blind:"\uD83D\uDE48",zeit:"\uD83E\uDDE0"};
+var PARTY_MODE_GR={classic:"linear-gradient(135deg,#10B981,#06B6D4)",reflex:"linear-gradient(135deg,#F97316,#F43F5E)",blind:"linear-gradient(135deg,#6366F1,#8B5CF6)",zeit:"linear-gradient(135deg,#8B5CF6,#EC4899)"};
 
-function partyRoulette(){var mode=MODES[Math.floor(Math.random()*MODES.length)];var idx=MODES.indexOf(mode);var finalA=(3+Math.random()*2)*360+idx*90+Math.random()*60+15;
-$("app").innerHTML='<div class="ct" style="padding:20px 16px;animation:pop .4s ease"><div style="font-size:12px;color:'+T.mt+';letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">'+t("rnd")+' '+PP.round+'/'+PP.totalRnds+'</div><div style="font-size:12px;color:'+T.mt+';margin-bottom:16px">'+t("spinning")+'</div><div style="position:relative;width:220px;height:220px;margin:0 auto 20px"><div id="rw" style="width:220px;height:220px;border-radius:50%;border:3px solid '+T.ln+';overflow:hidden;position:relative;transition:transform 3s cubic-bezier(.17,.67,.12,.99)"><div style="position:absolute;width:50%;height:50%;left:0;top:0;background:'+MODE_GR.classic+';display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:28px">'+MODE_IC.classic+'</div><div style="font-size:9px;font-weight:800;color:#fff">'+t("classic").toUpperCase()+'</div></div><div style="position:absolute;width:50%;height:50%;left:50%;top:0;background:'+MODE_GR.reflex+';display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:28px">'+MODE_IC.reflex+'</div><div style="font-size:9px;font-weight:800;color:#fff">'+t("reflex").toUpperCase()+'</div></div><div style="position:absolute;width:50%;height:50%;left:0;top:50%;background:'+MODE_GR.blind+';display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:28px">'+MODE_IC.blind+'</div><div style="font-size:9px;font-weight:800;color:#fff">'+t("blind").toUpperCase()+'</div></div><div style="position:absolute;width:50%;height:50%;left:50%;top:50%;background:'+MODE_GR.zeit+';display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:28px">'+MODE_IC.zeit+'</div><div style="font-size:9px;font-weight:800;color:#fff">'+t("zeit").toUpperCase()+'</div></div></div><div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:24px">\u25BC</div></div><div id="rres"></div></div>';
-sfxSpin();vb(25);setTimeout(function(){$("rw").style.transform="rotate("+finalA+"deg)"},50);
-setTimeout(function(){PP.mode=mode;PP.target=genTgt(PP.round,"medium",mode==="zeit");PP.ci=0;PP.results=[];PP.wager=0;PP.sab=null;sfxJetzt();vb([50,25,50]);$("rres").innerHTML='<div style="animation:pop .3s ease"><div style="font-size:40px;margin-bottom:4px">'+MODE_IC[mode]+'</div><div style="font-size:22px;font-weight:900;background:'+MODE_GR[mode]+';-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+t(mode)+'</div></div>';setTimeout(function(){partyPass()},1200)},3200)}
+// ═══ STATE MACHINE ═══
+function partySetState(newState){
+  P.state=newState;
+  switch(newState){
+    case "LOBBY": renderPartyLobby(); break;
+    case "ROUND_START": renderRoundStart(); break;
+    case "PLAYER_PASS": renderPlayerPass(); break;
+    case "PLAYER_WAGER": renderPlayerWager(); break;
+    case "PLAYER_SABOTAGE": renderPlayerSabotage(); break;
+    case "PLAYER_PLAY": renderPlayerPlay(); break;
+    case "PLAYER_RESULT": renderPlayerResult(); break;
+    case "ROUND_REVEAL": renderRoundReveal(); break;
+    case "DARE": renderDare(); break;
+    case "GAME_END": renderGameEnd(); break;
+  }
+}
 
-function partyCrownBar(){var h='<div style="display:flex;gap:4px;padding:4px 0;overflow-x:auto;margin-bottom:8px">';PP.players.forEach(function(p,i){h+='<div style="display:flex;flex-direction:column;align-items:center;min-width:40px;position:relative">'+(PP.crownIdx===i?'<div style="font-size:14px;animation:crownBob 1.5s ease infinite;position:absolute;top:-16px">\uD83D\uDC51</div>':'')+'<div style="font-size:18px;margin-top:'+(PP.crownIdx===i?'4px':'0')+'">'+p.avatar+'</div><div style="font-size:10px;font-weight:700;color:'+T.tx+';font-family:monospace">'+(PP.scores[i]||0)+'</div></div>'});return h+'</div>'}
+// ═══ SCORING ═══
+function partyScore(diffMs){return Math.max(0,1000-diffMs)}
+function partyTier(diffMs){
+  if(diffMs<=150)return{label:t("perf"),icon:"\u2B50",color:A.am,tier:"PERFECT"};
+  if(diffMs<=300)return{label:t("strong"),icon:"\uD83D\uDD25",color:A.em,tier:"GOOD"};
+  return{label:t("miss"),icon:"\uD83D\uDCA8",color:A.ro,tier:"FAIL"}
+}
+function partyGenTarget(){return Math.round((1.5+Math.random()*3.5)*10)/10}
+function partyZeitTarget(){return Math.round((2+Math.random()*4)*10)/10}
 
-function partyPass(){var p=PP.players[PP.ci];var isLast=PP.round>1&&PP.scores[PP.ci]===Math.min.apply(null,PP.scores);
-$("app").innerHTML='<div>'+partyCrownBar()+'<div class="ct" style="padding:36px 16px;animation:up .4s ease"><div style="font-size:12px;color:'+T.sb+';margin-bottom:8px">'+t("passTo")+'</div><div style="font-size:40px;margin-bottom:8px;animation:float 1.5s ease infinite">'+p.avatar+'</div><div style="font-size:24px;font-weight:900" class="gt">'+p.name+'</div>'+(isLast?'<div style="font-size:12px;color:'+A.am+';font-weight:700;margin:6px 0;animation:pulse 1s infinite">\uD83D\uDD25 '+t("revenge")+'</div>':'')+'<div style="font-size:11px;color:'+T.mt+';margin:8px 0 16px">'+MODE_IC[PP.mode]+' '+t(PP.mode)+'</div><button class="btn" onclick="partyWager()">'+t("ready")+'</button></div></div>'}
+// ═══ CROWN BAR (always visible during game) ═══
+function pCrown(){
+  var h='<div style="display:flex;gap:4px;padding:6px 0;overflow-x:auto;margin-bottom:10px;justify-content:center">';
+  P.players.forEach(function(p,i){
+    h+='<div style="display:flex;flex-direction:column;align-items:center;min-width:44px;position:relative;opacity:'+(i===P.ci&&P.state!=="ROUND_REVEAL"&&P.state!=="DARE"?'1':'.5')+'">';
+    if(P.crownIdx===i)h+='<div style="font-size:12px;animation:crownBob 1.5s ease infinite;position:absolute;top:-14px">\uD83D\uDC51</div>';
+    h+='<div style="font-size:20px;margin-top:'+(P.crownIdx===i?'4':'0')+'px">'+p.avatar+'</div>';
+    h+='<div style="font-size:9px;font-weight:700;color:'+T.tx+';font-family:monospace">'+(P.scores[i]||0)+'</div>';
+    h+='</div>'
+  });
+  return h+'</div>'
+}
 
-function partyWager(){var p=PP.players[PP.ci];
-$("app").innerHTML='<div>'+partyCrownBar()+'<div class="ct" style="padding:24px 16px;animation:up .4s ease"><div style="font-size:36px;margin-bottom:8px">'+p.avatar+'</div><div style="font-size:20px;font-weight:900;color:'+T.tx+';margin-bottom:4px">'+p.name+'</div><div style="font-size:14px;color:'+T.sb+';margin-bottom:20px">'+t("wagerQ")+'</div><div style="display:flex;flex-direction:column;gap:10px;max-width:280px;margin:0 auto"><button onclick="partyWagerPick(0)" style="background:linear-gradient(135deg,'+A.em+','+A.cy+');border:none;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;color:#fff;font-size:15px;font-weight:800">\uD83D\uDEE1\uFE0F '+t("safe")+'</button><button onclick="partyWagerPick(50)" style="background:linear-gradient(135deg,'+A.am+','+A.or+');border:none;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;color:#fff;font-size:15px;font-weight:800">\uD83C\uDFB2 '+t("bold")+'</button><button onclick="partyWagerPick(100)" style="background:linear-gradient(135deg,'+A.or+','+A.ro+');border:none;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;color:#fff;font-size:15px;font-weight:800">\uD83D\uDD25 '+t("allIn")+'</button></div><div style="font-size:11px;color:'+A.ro+';margin-top:12px;font-style:italic">'+t("riskWarn")+'</div></div></div>'}
+// ═══ STATE: LOBBY ═══
+function renderPartyLobby(){
+  P.players=[];P.round=0;P.totalRnds=5;P.daresOn=true;P.crownIdx=-1;P.lastPlaceIdx=-1;
+  window._pav=AV[0];
+  $("app").innerHTML='<div style="animation:up .4s ease">'+
+  '<button class="btn2" onclick="home()">\u2190 '+t("back")+'</button>'+
+  '<div class="ct" style="margin:12px 0"><div style="font-size:36px">\uD83C\uDF89</div><div style="font-size:20px;font-weight:900;color:'+T.tx+'">'+t("party")+'</div><div style="font-size:12px;color:'+T.sb+'">'+t("partyD")+'</div></div>'+
+  '<div style="'+cds("padding:14px 16px;margin-bottom:12px")+'">'+
+  '<input id="pn" placeholder="'+t("name")+'" maxlength="10" onkeydown="if(event.key===\'Enter\')pAddPlayer()" style="width:100%;background:transparent;border:none;border-bottom:2px solid '+T.ln+';padding:8px 0;color:'+T.tx+';font-size:16px;font-weight:800;text-align:center">'+
+  '<div id="pav" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center"></div>'+
+  '<div class="ct" style="margin-top:10px"><button onclick="pAddPlayer()" style="background:linear-gradient(135deg,'+A.em+','+A.cy+');border:none;border-radius:10px;padding:10px 18px;color:#fff;font-size:13px;font-weight:600">'+t("addP")+'</button></div></div>'+
+  '<div id="plist" style="'+cds("padding:12px;margin-bottom:12px")+'"></div>'+
+  '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px">'+
+  '<span style="font-size:12px;color:'+T.sb+'">'+t("rnds")+':</span>'+
+  '<button id="pr3" onclick="P.totalRnds=3;pUpdRnds()" style="width:38px;height:38px;border-radius:10px;padding:0;color:#fff;font-weight:800;font-size:15px;border:none">3</button>'+
+  '<button id="pr5" onclick="P.totalRnds=5;pUpdRnds()" style="width:38px;height:38px;border-radius:10px;padding:0;color:#fff;font-weight:800;font-size:15px;border:none">5</button>'+
+  '<button id="pr8" onclick="P.totalRnds=8;pUpdRnds()" style="width:38px;height:38px;border-radius:10px;padding:0;color:#fff;font-weight:800;font-size:15px;border:none">8</button></div>'+
+  '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px">'+
+  '<span style="font-size:12px;color:'+T.sb+'">'+t("dareMode")+':</span>'+
+  '<button id="pdr" onclick="P.daresOn=!P.daresOn;pUpdDare()" style="padding:6px 16px;border-radius:10px;border:none;color:#fff;font-weight:700;font-size:13px"></button></div>'+
+  '<button id="pstart" class="btn" onclick="pStartGame()" disabled>'+t("start")+'</button></div>';
+  pRenderAvatars();pUpdList();pUpdRnds();pUpdDare()
+}
+function pRenderAvatars(){
+  var g=$("pav");if(!g)return;
+  g.innerHTML=AV.slice(0,10).map(function(a){
+    return'<button onclick="window._pav=\''+a+'\';pRenderAvatars()" style="width:36px;height:36px;border-radius:10px;font-size:18px;display:flex;align-items:center;justify-content:center;background:'+((window._pav||AV[0])===a?A.v+"30":T.ra)+';border:'+((window._pav||AV[0])===a?"2px solid "+A.v:"1px solid "+T.ln)+'">'+a+'</button>'
+  }).join("")
+}
+function pAddPlayer(){
+  var n=$("pn");if(!n||!n.value.trim()||P.players.length>=8)return;
+  sfxTap();P.players.push({name:n.value.trim(),avatar:window._pav||AV[0]});
+  n.value="";window._pav=AV[P.players.length%AV.length];
+  pRenderAvatars();pUpdList()
+}
+function pUpdList(){
+  var el=$("plist");if(!el)return;
+  el.innerHTML='<div style="font-size:10px;color:'+T.mt+';letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">'+t("players")+' ('+P.players.length+')</div>'+
+  P.players.map(function(p,i){
+    return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;'+(i<P.players.length-1?"border-bottom:1px solid "+T.ln:"")+'"><span style="font-size:22px">'+p.avatar+'</span><span style="flex:1;font-weight:700;font-size:14px;color:'+T.tx+'">'+p.name+'</span><button onclick="P.players.splice('+i+',1);pUpdList()" style="background:none;border:none;color:'+A.ro+';cursor:pointer;font-size:14px">\u2715</button></div>'
+  }).join("");
+  var sb=$("pstart");if(sb)sb.disabled=P.players.length<2
+}
+function pUpdRnds(){
+  [["pr3",3],["pr5",5],["pr8",8]].forEach(function(x){
+    var b=$(x[0]);if(b)b.style.background=x[1]===P.totalRnds?"linear-gradient(135deg,"+A.v+","+A.pk+")":T.ra
+  })
+}
+function pUpdDare(){
+  var b=$("pdr");if(!b)return;
+  b.textContent=P.daresOn?"\uD83C\uDFA1 "+t("daresOn"):t("dares");
+  b.style.background=P.daresOn?"linear-gradient(135deg,"+A.ro+","+A.or+")":T.ra
+}
+function pStartGame(){
+  if(P.players.length<2)return;
+  sfxTap();vb(25);
+  P.scores=P.players.map(function(){return 0});
+  P.cards=P.players.map(function(){return[randEl(SAB_TYPES),randEl(SAB_TYPES)]});
+  P.round=0;P.crownIdx=-1;P.lastPlaceIdx=-1;
+  partySetState("ROUND_START")
+}
 
-function partyWagerPick(v){sfxTap();vb(10);PP.wager=v;
-if(PP.ci>0){var prev=PP.ci-1;var pc=PP.cards[prev];if(pc&&pc.length>0){partySabScreen();return}}PP.sab=null;partyPlay()}
+// ═══ STATE: ROUND_START (roulette spin) ═══
+function renderRoundStart(){
+  P.round++;P.ci=0;P.results=[];P.wager=0;P.sab=null;
+  var mode=PARTY_MODES[Math.floor(Math.random()*PARTY_MODES.length)];
+  P.mode=mode;
+  P.target=mode==="zeit"?partyZeitTarget():partyGenTarget();
+  var idx=PARTY_MODES.indexOf(mode);
+  var finalA=(3+Math.random()*2)*360+idx*90+Math.random()*60+15;
 
-function partySabScreen(){var prev=PP.ci-1;var pc=PP.cards[prev];var from=PP.players[prev];var to=PP.players[PP.ci];
-var html='<div>'+partyCrownBar()+'<div class="ct" style="padding:20px 16px;animation:up .4s ease"><div style="font-size:11px;color:'+A.ro+';letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">'+t("sabotage")+'</div><div style="font-size:13px;color:'+T.sb+';margin-bottom:4px">'+from.name+' \u2192 '+to.name+'</div><div style="font-size:14px;font-weight:700;color:'+T.tx+';margin-bottom:16px">'+t("playSab")+'</div><div style="display:flex;flex-direction:column;gap:8px;max-width:260px;margin:0 auto">';
-pc.forEach(function(c,i){html+='<button onclick="partySabPick(\''+c+'\','+i+')" style="'+cds("padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left;border-left:3px solid "+A.ro)+'"><span style="font-size:22px">'+SAB_IC[c]+'</span><div><div style="font-size:14px;font-weight:800;color:'+T.tx+'">'+t(c)+'</div><div style="font-size:11px;color:'+T.sb+'">'+t(c+"D")+'</div></div></button>'});
-html+='<button class="btn2" onclick="PP.sab=null;partyPlay()">'+t("skip")+'</button></div></div></div>';$("app").innerHTML=html}
-function partySabPick(card,idx){sfxSab();vb([50,25,50]);PP.sab=card;var prev=PP.ci-1;PP.cards[prev].splice(idx,1);partyPlay()}
+  $("app").innerHTML='<div class="ct" style="padding:20px 16px;animation:pop .4s ease">'+
+  '<div style="font-size:11px;color:'+T.mt+';letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">'+t("rnd")+' '+P.round+'/'+P.totalRnds+'</div>'+
+  '<div style="font-size:12px;color:'+T.sb+';margin-bottom:16px">'+t("spinning")+'</div>'+
+  '<div style="position:relative;width:220px;height:220px;margin:0 auto 20px">'+
+  '<div id="rw" style="width:220px;height:220px;border-radius:50%;border:3px solid '+T.ln+';overflow:hidden;position:relative;transition:transform 3s cubic-bezier(.17,.67,.12,.99)">'+
+  PARTY_MODES.map(function(m,i){
+    var pos=[{l:"0",t:"0"},{l:"50%",t:"0"},{l:"0",t:"50%"},{l:"50%",t:"50%"}][i];
+    return'<div style="position:absolute;width:50%;height:50%;left:'+pos.l+';top:'+pos.t+';background:'+PARTY_MODE_GR[m]+';display:flex;align-items:center;justify-content:center;flex-direction:column"><div style="font-size:28px">'+PARTY_MODE_IC[m]+'</div><div style="font-size:9px;font-weight:800;color:#fff;letter-spacing:1px">'+t(m).toUpperCase()+'</div></div>'
+  }).join("")+
+  '</div><div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);font-size:24px">\u25BC</div></div>'+
+  '<div id="rres"></div></div>';
 
-function partyPlay(){
-if(PP.mode==="classic")partyClassic();
-else if(PP.mode==="reflex")partyReflex();
-else if(PP.mode==="blind")partyBlind();
-else if(PP.mode==="zeit")partyZeit()}
+  sfxSpin();vb(25);
+  setTimeout(function(){var rw=$("rw");if(rw)rw.style.transform="rotate("+finalA+"deg)"},50);
+  setTimeout(function(){
+    sfxJetzt();vb([50,25,50]);
+    var rr=$("rres");if(rr)rr.innerHTML='<div style="animation:pop .3s ease"><div style="font-size:40px;margin-bottom:4px">'+PARTY_MODE_IC[mode]+'</div><div style="font-size:22px;font-weight:900;background:'+PARTY_MODE_GR[mode]+';-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+t(mode)+'</div></div>';
+    setTimeout(function(){partySetState("PLAYER_PASS")},1400)
+  },3200)
+}
 
-// Classic mini-game
-function partyClassic(){var tgt=PP.target;var isShake=PP.sab==="shake2";var isBlind=PP.sab==="blind2";var isReverse=PP.sab==="reverse";var displayTgt=isReverse?(10-tgt).toFixed(1):tgt.toFixed(1);
-$("app").innerHTML='<div style="'+(isShake?"animation:shakeLoop .3s infinite":"animation:up .3s ease")+'">'+partyCrownBar()+(PP.sab?'<div class="ct" style="font-size:11px;color:'+A.ro+';margin-bottom:8px;animation:pulse 1s infinite">'+SAB_IC[PP.sab]+' '+t(PP.sab)+' '+t(PP.sab+"D")+'</div>':'')+'<div class="ct">'+(isBlind?'<div id="ctgt" style="'+cds("display:inline-block;padding:10px 24px;border-left:3px solid "+A.v+";margin-bottom:20px")+'"><span style="font-size:28px">\uD83D\uDE48</span></div>':'<div style="'+cds("display:inline-block;padding:10px 24px;border-left:3px solid "+A.v+";margin-bottom:20px")+'"><div style="font-size:9px;color:'+T.mt+';letter-spacing:2px;text-transform:uppercase">'+t("tgt")+'</div><div style="font-size:38px;font-weight:900;font-family:monospace;color:'+T.tx+'">'+displayTgt+'s</div></div>')+'<button id="bz" class="bz" style="background:linear-gradient(135deg,'+A.v+','+A.pk+');box-shadow:0 0 24px '+A.v+'30" onclick="partyClassicTap()"><span id="bzl">START</span></button></div></div>';
-if(isBlind)setTimeout(function(){var e=$("ctgt");if(e)e.innerHTML='<div style="font-size:9px;color:'+T.mt+'">'+t("tgt")+'</div><div style="font-size:38px;font-weight:900;font-family:monospace;color:'+T.tx+'">'+displayTgt+'s</div>';},2000);
-window._pcBS="ready";window._pcT0=0}
-function partyClassicTap(){if(window._pcBS==="ready"){window._pcT0=Date.now();window._pcBS="timing";$("bz").style.background="linear-gradient(135deg,"+A.or+","+A.ro+")";$("bzl").textContent="STOP";vb(25)}else if(window._pcBS==="timing"){var el=Math.max(.01,(Date.now()-window._pcT0)/1000);var isSpeed=PP.sab==="speed";var jitter=isSpeed?(Math.random()-.5)*.6:0;var adj=Math.max(.01,el+jitter);window._pcBS="done";$("bz").style.background="linear-gradient(135deg,#5D5B7A,#555)";$("bzl").textContent="\u2713";var ms=Math.round(Math.abs(adj-PP.target)*1000);var g=gradeMs(ms);if(ms<=100){sfxGreat();vb([25,40,25,40,70])}else if(ms<=250){sfxGood();vb(25)}else sfxBad();setTimeout(function(){partyDone({time:adj,ms:ms,score:g.s})},600)}}
+// ═══ STATE: PLAYER_PASS ═══
+function renderPlayerPass(){
+  var p=P.players[P.ci];
+  var isRevenge=P.lastPlaceIdx===P.ci;
+  $("app").innerHTML='<div>'+pCrown()+
+  '<div class="ct" style="padding:30px 16px;animation:up .4s ease">'+
+  '<div style="font-size:12px;color:'+T.sb+';margin-bottom:8px">'+t("passTo")+'</div>'+
+  '<div style="font-size:48px;margin-bottom:8px;animation:float 1.5s ease infinite">'+p.avatar+'</div>'+
+  '<div style="font-size:26px;font-weight:900" class="gt">'+p.name+'</div>'+
+  (isRevenge?'<div style="font-size:12px;color:'+A.am+';font-weight:700;margin:8px 0;animation:pulse 1s infinite">\uD83D\uDD25 '+t("revenge")+'</div>':'')+
+  '<div style="font-size:12px;color:'+T.mt+';margin:8px 0">'+PARTY_MODE_IC[P.mode]+' '+t(P.mode)+'</div>'+
+  '<div style="font-size:11px;color:'+T.sb+';margin-bottom:16px">'+t("rnd")+' '+P.round+'/'+P.totalRnds+' \u00b7 '+(P.ci+1)+'/'+P.players.length+'</div>'+
+  '<button class="btn" onclick="partySetState(\'PLAYER_WAGER\')">'+t("ready")+'</button></div></div>'
+}
 
-// Reflex mini-game
-function partyReflex(){var isShake=PP.sab==="shake2";
-$("app").innerHTML='<div id="rfx" style="min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:40px 16px" onclick="partyReflexTap()">'+partyCrownBar()+(PP.sab?'<div style="font-size:11px;color:'+A.ro+';margin-bottom:8px">'+SAB_IC[PP.sab]+' '+t(PP.sab)+'</div>':'')+'<div id="rfxc"><div style="font-size:48px;margin-bottom:12px;animation:pulse 1.5s infinite">\uD83D\uDC46</div><div style="font-size:18px;font-weight:800;color:'+A.am+'">'+t("wait")+'</div></div></div>';
-window._rfxSt="wait";window._rfxT=setTimeout(function(){window._rfxSt="go";window._rfxT0=Date.now();sfxJetzt();vb([80,40,80,40,120]);var c=$("rfxc");if(c)c.innerHTML='<div style="animation:flash .2s ease"><div style="width:140px;height:140px;border-radius:50%;background:linear-gradient(135deg,'+A.em+','+A.cy+');margin:0 auto 16px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px '+A.em+'30"><span style="font-size:22px;font-weight:900;color:#fff;letter-spacing:3px">'+t("tap")+'</span></div></div>';if(isShake)$("rfx").style.animation="shakeLoop .3s infinite"},1500+Math.random()*3000)}
-function partyReflexTap(){if(window._rfxSt==="wait"){clearTimeout(window._rfxT);window._rfxSt="early";sfxBad();vb(25);$("rfxc").innerHTML='<div style="animation:shake .4s ease"><div style="font-size:48px;margin-bottom:8px">\u274C</div><div style="font-size:18px;font-weight:800;color:'+A.ro+'">'+t("tooEarly")+'</div></div>';setTimeout(function(){partyDone({time:0,ms:9999,score:0})},1000)}else if(window._rfxSt==="go"){var ms=Date.now()-window._rfxT0;window._rfxSt="done";sfxGood();vb(25);$("rfxc").innerHTML='<div style="animation:pop .3s ease"><div style="font-size:14px;color:'+T.sb+'">'+t("reaction")+'</div><div style="font-size:28px;font-weight:900;color:'+T.tx+';font-family:monospace">'+ms+'ms</div></div>';setTimeout(function(){partyDone({time:ms/1000,ms:Math.min(ms,500),score:Math.max(0,1000-ms*2)})},800)}}
+// ═══ STATE: PLAYER_WAGER ═══
+function renderPlayerWager(){
+  var p=P.players[P.ci];
+  $("app").innerHTML='<div>'+pCrown()+
+  '<div class="ct" style="padding:20px 16px;animation:up .4s ease">'+
+  '<div style="font-size:32px;margin-bottom:6px">'+p.avatar+'</div>'+
+  '<div style="font-size:18px;font-weight:900;color:'+T.tx+';margin-bottom:4px">'+p.name+'</div>'+
+  '<div style="font-size:14px;color:'+T.sb+';margin-bottom:18px">'+t("wagerQ")+'</div>'+
+  '<div style="display:flex;flex-direction:column;gap:10px;max-width:280px;margin:0 auto">'+
+  '<button onclick="pPickWager(0)" style="background:linear-gradient(135deg,'+A.em+','+A.cy+');border:none;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;color:#fff;font-weight:800;font-size:15px">\uD83D\uDEE1\uFE0F '+t("safe")+'</button>'+
+  '<button onclick="pPickWager(50)" style="background:linear-gradient(135deg,'+A.am+','+A.or+');border:none;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;color:#fff;font-weight:800;font-size:15px">\uD83C\uDFB2 '+t("bold")+'</button>'+
+  '<button onclick="pPickWager(100)" style="background:linear-gradient(135deg,'+A.or+','+A.ro+');border:none;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;color:#fff;font-weight:800;font-size:15px">\uD83D\uDD25 '+t("allIn")+'</button></div>'+
+  '<div style="font-size:11px;color:'+A.ro+';margin-top:12px;font-style:italic">'+t("riskWarn")+'</div></div></div>'
+}
+function pPickWager(v){
+  sfxTap();vb(10);P.wager=v;
+  // Check if previous player has sabotage cards
+  if(P.ci>0){
+    var prevCards=P.cards[P.ci-1];
+    if(prevCards&&prevCards.length>0){partySetState("PLAYER_SABOTAGE");return}
+  }
+  P.sab=null;
+  partySetState("PLAYER_PLAY")
+}
 
-// Blind mini-game
-function partyBlind(){var tgt=PP.target;
-$("app").innerHTML='<div class="ct" style="padding:20px 16px">'+partyCrownBar()+(PP.sab?'<div style="font-size:11px;color:'+A.ro+';margin-bottom:8px">'+SAB_IC[PP.sab]+' '+t(PP.sab)+'</div>':'')+'<div id="blc" style="animation:pop .3s ease"><div style="font-size:12px;color:'+T.mt+';letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">MEMORIZE</div><div style="font-size:64px;font-weight:900;color:'+A.am+';font-family:monospace">'+tgt.toFixed(1)+'s</div></div></div>';
-setTimeout(function(){$("blc").innerHTML='<div style="animation:up .4s ease"><div style="font-size:16px;font-weight:800;color:'+T.tx+';margin-bottom:16px">\u2753 '+t("estimate")+'</div><input id="bli" type="text" inputmode="decimal" placeholder="0.0" style="width:120px;text-align:center;font-size:40px;font-weight:900;color:'+T.tx+';font-family:monospace;border:none;border-bottom:3px solid '+T.ln+';background:transparent"><span style="font-size:18px;color:'+T.mt+'">s</span><br><button class="btn" style="margin-top:16px" onclick="partyBlindSub()">'+t("submit")+'</button></div>';setTimeout(function(){var i=$("bli");if(i)i.focus()},100)},3000)}
-function partyBlindSub(){var g=parseFloat($("bli").value);if(isNaN(g)||g<=0)return;var ms=Math.round(Math.abs(g-PP.target)*1000);var gr=gradeMs(ms);if(ms<=100)sfxGreat();else if(ms<=250)sfxGood();else sfxBad();setTimeout(function(){partyDone({time:g,ms:ms,score:gr.s})},600)}
+// ═══ STATE: PLAYER_SABOTAGE ═══
+function renderPlayerSabotage(){
+  var prev=P.ci-1;var pc=P.cards[prev];var from=P.players[prev];var to=P.players[P.ci];
+  if(!pc||pc.length===0){P.sab=null;partySetState("PLAYER_PLAY");return}
 
-// Party Zeitgefuehl
-function partyZeit(){var c=3;$("app").innerHTML='<div class="ct" style="padding:50px 0">'+partyCrownBar()+'<div style="font-size:10px;color:'+T.mt+';letter-spacing:3px;text-transform:uppercase;margin-bottom:8px">'+t("getReady")+'</div><div id="cdn" style="font-size:96px;font-weight:900;background:linear-gradient(135deg,#6366F1,'+A.v+');-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:cPop .3s ease">3</div></div>';sfxTick();vb(10);window._pzT0=0;var iv=setInterval(function(){c--;var el=$("cdn");if(!el){clearInterval(iv);return}if(c>0){el.textContent=c;el.style.animation="none";void el.offsetHeight;el.style.animation="cPop .3s ease";sfxTick();vb(10)}else if(c===0){el.textContent=t("now");el.style.background="linear-gradient(135deg,"+A.em+","+A.cy+")";el.style.WebkitBackgroundClip="text";sfxJetzt();vb([80,40,80,40,120]);window._pzT0=Date.now()}else{clearInterval(iv);partyZeitRun()}},1e3)}
-function partyZeitRun(){$("app").innerHTML='<div class="ct" style="padding:40px 0;animation:fadeIn .6s ease">'+partyCrownBar()+'<div style="position:relative;width:150px;height:150px;margin:0 auto 18px"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid '+A.cy+'22;animation:ripple 2s ease infinite"></div><div style="width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,'+A.cy+'10,transparent 70%);display:flex;align-items:center;justify-content:center;animation:breathe 3s ease infinite"><div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366F1,'+A.v+');opacity:.5"></div></div></div><div style="font-size:16px;font-weight:700;color:'+A.cy+'">'+t("countAlong")+'</div></div>';
-var el2=Date.now()-window._pzT0;var rem=Math.max(100,PP.target*1e3-el2);setTimeout(function(){var zR=Math.round(((Date.now()-window._pzT0)/1000)*1e3)/1e3;window._pzZR=zR;sfxGood();vb([50,25,50]);partyZeitEst()},rem)}
-function partyZeitEst(){$("app").innerHTML='<div class="ct" style="padding:14px 0;animation:up .4s ease"><div style="font-size:60px;font-weight:900;background:linear-gradient(135deg,'+A.or+','+A.ro+');-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;animation:pop .3s ease">'+t("stop")+'</div><div style="font-size:18px;font-weight:800;margin-bottom:16px">'+t("howLong")+'</div><div style="'+cds("display:inline-block;padding:18px 24px;border-top:3px solid "+A.cy+";max-width:240px")+'"><input id="pzi" type="text" inputmode="decimal" placeholder="0.00" style="width:130px;text-align:center;font-size:42px;font-weight:900;color:'+T.tx+';font-family:monospace;border:none;border-bottom:3px solid '+T.ln+';background:transparent"><span style="font-size:18px;color:'+T.mt+'">s</span></div><br><button class="btn" style="margin-top:16px" onclick="partyZeitSub()">'+t("submit")+'</button></div>';setTimeout(function(){var i=$("pzi");if(i)i.focus()},150)}
-function partyZeitSub(){var g=parseFloat($("pzi").value);if(isNaN(g)||g<=0)return;var ms=Math.round(Math.abs(g-window._pzZR)*1000);var gr=gradeMs(ms);if(ms<=100)sfxGreat();else if(ms<=250)sfxGood();else sfxBad();setTimeout(function(){partyDone({time:g,ms:ms,score:gr.s})},600)}
+  var html='<div>'+pCrown()+
+  '<div class="ct" style="padding:20px 16px;animation:up .4s ease">'+
+  '<div style="font-size:11px;color:'+A.ro+';letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">\u26A0\uFE0F '+t("sabotage")+'</div>'+
+  '<div style="font-size:13px;color:'+T.sb+';margin-bottom:4px">'+from.name+' \u2192 '+to.name+'</div>'+
+  '<div style="font-size:14px;font-weight:700;color:'+T.tx+';margin-bottom:16px">'+t("playSab")+'</div>'+
+  '<div style="display:flex;flex-direction:column;gap:8px;max-width:260px;margin:0 auto">';
+  pc.forEach(function(c,i){
+    html+='<button onclick="pPickSab(\''+c+'\','+i+')" style="'+cds("padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;text-align:left;border-left:3px solid "+A.ro)+'"><span style="font-size:22px">'+SAB_IC[c]+'</span><div><div style="font-size:14px;font-weight:800;color:'+T.tx+'">'+t(c)+'</div><div style="font-size:11px;color:'+T.sb+'">'+t(c+"D")+'</div></div></button>'
+  });
+  html+='<button onclick="pSkipSab()" style="background:'+T.ra+';border:1px solid '+T.ln+';border-radius:10px;padding:10px 18px;color:#fff;font-size:13px;font-weight:600">'+t("skip")+'</button>';
+  html+='</div></div></div>';
+  $("app").innerHTML=html
+}
+function pPickSab(card,idx){
+  sfxSab();vb([50,25,50]);
+  P.sab=card;
+  P.cards[P.ci-1].splice(idx,1);
+  partySetState("PLAYER_PLAY")
+}
+function pSkipSab(){sfxTap();P.sab=null;partySetState("PLAYER_PLAY")}
 
-// Score + advance
-function partyDone(res){var isLast=PP.round>1&&PP.scores[PP.ci]===Math.min.apply(null,PP.scores);var earned=res.score;if(isLast)earned*=2;var missed=res.ms>500;var final2=missed?Math.max(0,earned-PP.wager):earned+PP.wager;PP.results.push({idx:PP.ci,name:PP.players[PP.ci].name,avatar:PP.players[PP.ci].avatar,ms:res.ms,rawScore:res.score,wager:PP.wager,revenge:isLast,finalScore:final2,sabotage:PP.sab});
-// Show individual result
-var g=grade(res.ms);var p=PP.players[PP.ci];
-$("app").innerHTML='<div style="animation:pop .4s ease">'+partyCrownBar()+'<div class="ct" style="padding:20px 16px"><div style="font-size:44px;animation:float 2s ease infinite;margin-bottom:4px">'+g.i+'</div><div style="font-size:22px;font-weight:900;color:'+g.c+'">'+g.t+'</div><div style="font-size:13px;color:'+T.sb+';margin-top:4px">'+p.name+'</div><div style="'+cds("display:inline-block;padding:14px 20px;margin:14px 0")+'"><div style="display:flex;gap:20px;text-align:center"><div><div style="font-size:8px;color:'+T.mt+';text-transform:uppercase">'+t("dev")+'</div><div style="font-size:20px;font-weight:900;color:'+g.c+';font-family:monospace">'+res.ms+'ms</div></div><div><div style="font-size:8px;color:'+T.mt+';text-transform:uppercase">'+t("pts")+'</div><div style="font-size:20px;font-weight:900;color:'+A.am+';font-family:monospace">'+final2+'</div></div></div></div>'+(PP.wager>0?'<div style="font-size:11px;color:'+(missed?A.ro:A.em)+';margin-bottom:8px">'+(missed?"\u274C -"+PP.wager:"\u2705 +"+PP.wager)+' Wager</div>':'')+(isLast?'<div style="font-size:11px;color:'+A.am+';margin-bottom:8px">\uD83D\uDD25 2x Revenge!</div>':'')+'<button class="btn" style="margin-top:8px" onclick="partyNextPlayer()">'+t("next")+'</button></div></div>'}
-function partyNextPlayer(){
-if(PP.ci<PP.players.length-1){PP.ci++;PP.wager=0;PP.sab=null;partyPass()}else{PP.scores=PP.scores.map(function(s,i){var r=PP.results.filter(function(x){return x.idx===i})[0];return s+(r?r.finalScore:0)});var maxS=Math.max.apply(null,PP.scores);var nc=PP.scores.indexOf(maxS);if(nc!==PP.crownIdx){sfxCrown();PP.crownIdx=nc}partyReveal()}}
+// ═══ STATE: PLAYER_PLAY ═══
+function renderPlayerPlay(){
+  switch(P.mode){
+    case "classic": pPlayClassic(); break;
+    case "reflex": pPlayReflex(); break;
+    case "blind": pPlayBlind(); break;
+    case "zeit": pPlayZeit(); break;
+  }
+}
 
-function partyReveal(){sfxDrum();vb(25);var sorted=PP.results.slice().sort(function(a,b){return b.finalScore-a.finalScore});var maxScore=Math.max.apply(null,sorted.map(function(r){return r.finalScore}).concat([1]));
-$("app").innerHTML='<div style="padding:20px 16px;animation:fadeIn .4s ease"><div class="ct" style="margin-bottom:16px"><div style="font-size:12px;color:'+T.mt+';letter-spacing:3px;text-transform:uppercase">'+t("drumroll")+'</div><div style="display:flex;gap:6px;justify-content:center;margin-top:12px"><div style="width:8px;height:8px;border-radius:4px;background:'+A.v+';animation:dotP 1.2s ease 0s infinite"></div><div style="width:8px;height:8px;border-radius:4px;background:'+A.v+';animation:dotP 1.2s ease .2s infinite"></div><div style="width:8px;height:8px;border-radius:4px;background:'+A.v+';animation:dotP 1.2s ease .4s infinite"></div></div></div><div id="rvb"></div></div>';
-var si=0;setTimeout(function(){var iv2=setInterval(function(){var el=$("rvb");if(!el){clearInterval(iv2);return}var html="";sorted.forEach(function(r,i){var show=i>=(sorted.length-1-si);var w=Math.max(8,(r.finalScore/maxScore)*100);html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:'+(show?1:.15)+';transition:opacity .3s;'+(show?"animation:sL .3s ease both":"")+'">';html+='<div style="width:30px;text-align:center;font-size:18px">'+(show?(i===0?"\uD83D\uDC51":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":"#"+(i+1)):"")+'</div>';html+='<div style="font-size:20px">'+r.avatar+'</div>';html+='<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:'+T.tx+';margin-bottom:3px">'+r.name+'</div><div style="height:12px;background:'+T.ra+';border-radius:6px;overflow:hidden"><div style="height:100%;border-radius:6px;background:'+(i===0?"linear-gradient(135deg,"+A.v+","+A.pk+")":i===1?"linear-gradient(135deg,"+A.em+","+A.cy+")":"linear-gradient(135deg,#6366F1,"+A.v+")")+';width:'+(show?w+"%":"0%")+';transition:width .6s ease"></div></div></div>';html+='<div style="font-family:monospace;font-weight:900;font-size:14px;color:'+(show?(i===0?A.am:T.tx):T.mt)+';min-width:40px;text-align:right">'+(show?r.finalScore:"")+'</div></div>'});el.innerHTML=html;sfxTick();vb(10);si++;if(si>=sorted.length){clearInterval(iv2);setTimeout(function(){sfxGreat();vb([25,40,25,40,70]);el.innerHTML+='\n<div class="ct" style="margin-top:16px"><button class="btn" onclick="partyAfterReveal()">'+t("next")+'</button></div>'},600)}},500)},1800)}
+// --- CLASSIC ---
+function pPlayClassic(){
+  var tgt=P.target;
+  var isShake=P.sab==="shake2",isBlind2=P.sab==="blind2",isReverse=P.sab==="reverse",isSpeed=P.sab==="speed";
+  var displayTgt=isReverse?(10-tgt).toFixed(1):tgt.toFixed(1);
 
-function partyAfterReveal(){if(PP.daresOn){var rr=PP.results.slice().sort(function(a,b){return a.finalScore-b.finalScore});PP.dareLoser=PP.players[rr[0].idx];partyDare()}else partyAdvance()}
+  $("app").innerHTML='<div style="'+(isShake?"animation:shakeLoop .3s infinite":"animation:up .3s ease")+'">'+pCrown()+
+  (P.sab?'<div class="ct" style="font-size:11px;color:'+A.ro+';margin-bottom:8px;animation:pulse 1s infinite">'+SAB_IC[P.sab]+' '+t(P.sab)+' — '+t(P.sab+"D")+'</div>':'')+
+  '<div class="ct">'+
+  '<div id="ptgt" style="'+cds("display:inline-block;padding:10px 24px;border-left:3px solid "+A.v+";margin-bottom:20px")+'">'+(isBlind2?'<span style="font-size:28px">\uD83D\uDE48</span>':'<div style="font-size:9px;color:'+T.mt+';letter-spacing:2px;text-transform:uppercase">'+t("tgt")+'</div><div style="font-size:38px;font-weight:900;font-family:monospace;color:'+T.tx+'">'+displayTgt+'s</div>')+'</div>'+
+  '<button id="bz" class="bz" style="background:linear-gradient(135deg,'+A.v+','+A.pk+');box-shadow:0 0 24px '+A.v+'30" onclick="pClassicTap()"><span id="bzl">START</span></button></div></div>';
 
-function partyDare(){var loser=PP.dareLoser;var dares=DARE_L[lang]||DARE_L.de;sfxSpin();vb(25);
-$("app").innerHTML='<div class="ct" style="padding:24px 16px;animation:pop .4s ease"><div style="font-size:12px;color:'+A.ro+';letter-spacing:3px;text-transform:uppercase;margin-bottom:12px">'+t("dare")+'</div><div style="font-size:28px;margin-bottom:8px">'+loser.avatar+'</div><div style="font-size:18px;font-weight:800;color:'+T.tx+';margin-bottom:16px">'+loser.name+' '+t("dareQ")+'</div><div style="font-size:48px;animation:gSpin 1s linear infinite">\uD83C\uDFA1</div></div>';
-var d=randEl(dares);setTimeout(function(){sfxSab();vb([50,25,50]);$("app").innerHTML='<div class="ct" style="padding:24px 16px;animation:pop .4s ease"><div style="font-size:12px;color:'+A.ro+';letter-spacing:3px;text-transform:uppercase;margin-bottom:12px">'+t("dare")+'</div><div style="font-size:28px;margin-bottom:8px">'+loser.avatar+'</div><div style="font-size:18px;font-weight:800;color:'+T.tx+';margin-bottom:16px">'+loser.name+'</div><div style="'+cds("padding:20px 24px;border-top:3px solid "+A.ro+";max-width:300px;margin:0 auto 16px")+'"><div style="font-size:16px;font-weight:700;color:'+T.tx+';line-height:1.5">'+d+'</div></div><button class="btn" onclick="partyAdvance()">'+t("next")+'</button></div>'},2500)}
+  if(isBlind2)setTimeout(function(){var e=$("ptgt");if(e)e.innerHTML='<div style="font-size:9px;color:'+T.mt+'">'+t("tgt")+'</div><div style="font-size:38px;font-weight:900;font-family:monospace;color:'+T.tx+'">'+displayTgt+'s</div>'},2000);
+  window._pBS="ready";window._pT0=0
+}
+function pClassicTap(){
+  if(window._pBS==="ready"){
+    window._pT0=Date.now();window._pBS="timing";
+    $("bz").style.background="linear-gradient(135deg,"+A.or+","+A.ro+")";
+    $("bz").style.boxShadow="0 0 24px "+A.ro+"30";
+    $("bzl").textContent="STOP";vb(25)
+  } else if(window._pBS==="timing"){
+    var elapsed=Math.max(.01,(Date.now()-window._pT0)/1000);
+    var isSpeed2=P.sab==="speed";
+    var jitter=isSpeed2?(Math.random()-.5)*.6:0;
+    var adj=Math.max(.01,elapsed+jitter);
+    window._pBS="done";
+    $("bz").style.background="linear-gradient(135deg,#5D5B7A,#555)";
+    $("bz").style.boxShadow="none";$("bzl").textContent="\u2713";
+    var diffMs=Math.round(Math.abs(adj-P.target)*1000);
+    pFinishTurn(diffMs,adj)
+  }
+}
 
-function partyAdvance(){if(PP.round>=PP.totalRnds){partyFinal();return}PP.round++;PP.mode=null;PP.ci=0;PP.wager=0;PP.sab=null;PP.results=[];partyRoulette()}
+// --- REFLEX ---
+function pPlayReflex(){
+  var isShake=P.sab==="shake2";
+  $("app").innerHTML='<div id="rfx" onclick="pReflexTap()" style="min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:40px 16px;'+(isShake?"":"")+'">'+pCrown()+
+  (P.sab?'<div style="font-size:11px;color:'+A.ro+';margin-bottom:8px">'+SAB_IC[P.sab]+' '+t(P.sab)+'</div>':'')+
+  '<div id="rfxc"><div style="font-size:48px;margin-bottom:12px;animation:pulse 1.5s infinite">\uD83D\uDC46</div><div style="font-size:18px;font-weight:800;color:'+A.am+'">'+t("wait")+'</div></div></div>';
 
-function partyFinal(){confetti();var ranked=PP.players.map(function(p,i){return{name:p.name,avatar:p.avatar,score:PP.scores[i]}}).sort(function(a,b){return b.score-a.score});
-$("app").innerHTML='<div style="animation:pop .5s ease"><div class="ct" style="margin-bottom:20px"><div style="font-size:60px;animation:float 2s ease infinite">\uD83C\uDFC6</div><div style="font-size:26px;font-weight:900;background:linear-gradient(135deg,'+A.am+',#FBBF24);-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+ranked[0].name+' '+t("winner")+'</div></div><div style="font-size:12px;color:'+T.mt+';letter-spacing:3px;text-transform:uppercase;text-align:center;margin-bottom:12px">'+t("final")+'</div>'+ranked.map(function(r,i){return'<div style="display:flex;align-items:center;gap:10px;'+cds("padding:12px 14px;margin-bottom:8px;border-left:3px solid "+(i===0?A.am:i===1?A.em:i===2?A.v:T.ln)+";animation:sL .4s ease "+i*.08+"s both")+'"><div style="font-size:20px;width:30px;text-align:center">'+(i===0?"\uD83D\uDC51":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":"#"+(i+1))+'</div><div style="font-size:22px">'+r.avatar+'</div><div style="flex:1"><div style="font-weight:800;font-size:14px;color:'+T.tx+'">'+r.name+'</div></div><div style="font-family:monospace;font-weight:900;font-size:18px;color:'+(i===0?A.am:T.tx)+'">'+r.score+'</div></div>'}).join("")+'<div class="ct" style="margin-top:16px"><button class="btn" onclick="home()">'+t("playAgain")+'</button></div></div>';sfxWin();vb([25,40,25,40,70])}
+  window._rfxState="wait";
+  var delay=1500+Math.random()*2500;
+  window._rfxTimer=setTimeout(function(){
+    window._rfxState="go";window._rfxT0=Date.now();
+    sfxJetzt();vb([80,40,80,40,120]);
+    var c=$("rfxc");if(c)c.innerHTML='<div style="animation:flash .2s ease"><div style="width:140px;height:140px;border-radius:50%;background:linear-gradient(135deg,'+A.em+','+A.cy+');margin:0 auto 16px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px '+A.em+'30"><span style="font-size:22px;font-weight:900;color:#fff;letter-spacing:3px">'+t("tap")+'</span></div></div>';
+    if(isShake){var r=$("rfx");if(r)r.style.animation="shakeLoop .3s infinite"}
+  },delay)
+}
+function pReflexTap(){
+  if(window._rfxState==="wait"){
+    clearTimeout(window._rfxTimer);window._rfxState="early";
+    sfxBad();vb(25);
+    var c=$("rfxc");if(c)c.innerHTML='<div style="animation:shake .4s ease"><div style="font-size:48px;margin-bottom:8px">\u274C</div><div style="font-size:18px;font-weight:800;color:'+A.ro+'">'+t("tooEarly")+'</div></div>';
+    setTimeout(function(){pFinishTurn(9999,0)},1000)
+  } else if(window._rfxState==="go"){
+    var ms=Date.now()-window._rfxT0;window._rfxState="done";
+    sfxGood();vb(25);
+    var c2=$("rfxc");if(c2)c2.innerHTML='<div style="animation:pop .3s ease"><div style="font-size:14px;color:'+T.sb+'">'+t("reaction")+'</div><div style="font-size:28px;font-weight:900;color:'+T.tx+';font-family:monospace">'+ms+'ms</div></div>';
+    setTimeout(function(){pFinishTurn(Math.min(ms,1000),ms/1000)},800)
+  }
+}
+
+// --- BLIND ---
+function pPlayBlind(){
+  var tgt=P.target;
+  $("app").innerHTML='<div class="ct" style="padding:20px 16px">'+pCrown()+
+  (P.sab?'<div style="font-size:11px;color:'+A.ro+';margin-bottom:8px">'+SAB_IC[P.sab]+' '+t(P.sab)+'</div>':'')+
+  '<div id="blc" style="animation:pop .3s ease"><div style="font-size:12px;color:'+T.mt+';letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">MEMORIZE</div><div style="font-size:64px;font-weight:900;color:'+A.am+';font-family:monospace">'+tgt.toFixed(1)+'s</div><div style="margin-top:12px;display:flex;gap:6px;justify-content:center"><div style="width:8px;height:8px;border-radius:4px;background:'+A.am+';animation:dotP 1.2s ease 0s infinite"></div><div style="width:8px;height:8px;border-radius:4px;background:'+A.am+';animation:dotP 1.2s ease .2s infinite"></div><div style="width:8px;height:8px;border-radius:4px;background:'+A.am+';animation:dotP 1.2s ease .4s infinite"></div></div></div></div>';
+  setTimeout(function(){
+    var c=$("blc");if(!c)return;
+    c.innerHTML='<div style="animation:up .4s ease"><div style="font-size:16px;font-weight:800;color:'+T.tx+';margin-bottom:16px">\u2753 '+t("estimate")+'</div><input id="bli" type="text" inputmode="decimal" placeholder="0.0" style="width:120px;text-align:center;font-size:40px;font-weight:900;color:'+T.tx+';font-family:monospace;border:none;border-bottom:3px solid '+T.ln+';background:transparent"><span style="font-size:18px;color:'+T.mt+'">s</span><br><button class="btn" style="margin-top:16px" onclick="pBlindSubmit()">'+t("submit")+'</button></div>';
+    setTimeout(function(){var i=$("bli");if(i)i.focus()},100)
+  },3000)
+}
+function pBlindSubmit(){
+  var v=parseFloat($("bli").value);if(isNaN(v)||v<=0)return;
+  sfxTap();
+  var diffMs=Math.round(Math.abs(v-P.target)*1000);
+  pFinishTurn(diffMs,v)
+}
+
+// --- ZEIT (Time Feel) ---
+function pPlayZeit(){
+  var c=3;
+  $("app").innerHTML='<div class="ct" style="padding:50px 0">'+pCrown()+
+  '<div style="font-size:10px;color:'+T.mt+';letter-spacing:3px;text-transform:uppercase;margin-bottom:8px">'+t("getReady")+'</div>'+
+  '<div id="cdn" style="font-size:96px;font-weight:900;background:linear-gradient(135deg,#6366F1,'+A.v+');-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:cPop .3s ease">3</div></div>';
+  sfxTick();vb(10);
+  window._pzT0=0;
+  var iv=setInterval(function(){
+    c--;var el=$("cdn");if(!el){clearInterval(iv);return}
+    if(c>0){el.textContent=c;el.style.animation="none";void el.offsetHeight;el.style.animation="cPop .3s ease";sfxTick();vb(10)}
+    else if(c===0){el.textContent=t("now");el.style.background="linear-gradient(135deg,"+A.em+","+A.cy+")";el.style.WebkitBackgroundClip="text";sfxJetzt();vb([80,40,80,40,120]);window._pzT0=Date.now()}
+    else{clearInterval(iv);pZeitRun()}
+  },1e3)
+}
+function pZeitRun(){
+  $("app").innerHTML='<div class="ct" style="padding:40px 0;animation:fadeIn .6s ease">'+pCrown()+
+  '<div style="position:relative;width:150px;height:150px;margin:0 auto 18px"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid '+A.cy+'22;animation:ripple 2s ease infinite"></div><div style="width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,'+A.cy+'10,transparent 70%);display:flex;align-items:center;justify-content:center;animation:breathe 3s ease infinite"><div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366F1,'+A.v+');opacity:.5"></div></div></div>'+
+  '<div style="font-size:16px;font-weight:700;color:'+A.cy+'">'+t("countAlong")+'</div></div>';
+  var elapsed=Date.now()-window._pzT0;
+  var remaining=Math.max(100,P.target*1e3-elapsed);
+  setTimeout(function(){
+    window._pzReal=Math.round(((Date.now()-window._pzT0)/1000)*1e3)/1e3;
+    sfxGood();vb([50,25,50]);pZeitEstimate()
+  },remaining)
+}
+function pZeitEstimate(){
+  $("app").innerHTML='<div class="ct" style="padding:14px 0;animation:up .4s ease">'+
+  '<div style="font-size:60px;font-weight:900;background:linear-gradient(135deg,'+A.or+','+A.ro+');-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;animation:pop .3s ease">'+t("stop")+'</div>'+
+  '<div style="font-size:18px;font-weight:800;margin-bottom:16px">'+t("howLong")+'</div>'+
+  '<div style="'+cds("display:inline-block;padding:18px 24px;border-top:3px solid "+A.cy+";max-width:240px")+'"><div style="font-size:9px;color:'+T.mt+';letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">'+t("yourEst")+'</div>'+
+  '<input id="pzi" type="text" inputmode="decimal" placeholder="0.00" style="width:130px;text-align:center;font-size:42px;font-weight:900;color:'+T.tx+';font-family:monospace;border:none;border-bottom:3px solid '+T.ln+';background:transparent"><span style="font-size:18px;color:'+T.mt+'">s</span></div>'+
+  '<br><button class="btn" style="margin-top:16px" onclick="pZeitSubmit()">'+t("submit")+'</button></div>';
+  setTimeout(function(){var i=$("pzi");if(i)i.focus()},150)
+}
+function pZeitSubmit(){
+  var v=parseFloat($("pzi").value);if(isNaN(v)||v<=0)return;
+  sfxTap();
+  var diffMs=Math.round(Math.abs(v-window._pzReal)*1000);
+  pFinishTurn(diffMs,v)
+}
+
+// ═══ FINISH TURN (central scoring) ═══
+function pFinishTurn(diffMs,actualTime){
+  var tier=partyTier(diffMs);
+  var baseScore=partyScore(diffMs);
+  var isRevenge=P.lastPlaceIdx===P.ci;
+  if(isRevenge)baseScore=baseScore*2;
+
+  var wagerResult=0;
+  if(P.wager>0){
+    if(tier.tier==="FAIL")wagerResult=-P.wager;
+    else wagerResult=P.wager;
+  }
+  var finalScore=Math.max(0,baseScore+wagerResult);
+
+  // Sound + haptic
+  if(tier.tier==="PERFECT"){sfxGreat();vb([25,40,25,40,70])}
+  else if(tier.tier==="GOOD"){sfxGood();vb(25)}
+  else{sfxBad();vb(10)}
+
+  // Store result
+  P.results.push({
+    idx:P.ci, name:P.players[P.ci].name, avatar:P.players[P.ci].avatar,
+    diffMs:diffMs, baseScore:baseScore, wager:P.wager, wagerResult:wagerResult,
+    finalScore:finalScore, revenge:isRevenge, sab:P.sab, tier:tier
+  });
+
+  // Show individual result
+  setTimeout(function(){partySetState("PLAYER_RESULT")},400)
+}
+
+// ═══ STATE: PLAYER_RESULT ═══
+function renderPlayerResult(){
+  var r=P.results[P.results.length-1];
+  var t2=r.tier;
+
+  $("app").innerHTML='<div style="animation:pop .4s ease">'+pCrown()+
+  '<div class="ct" style="padding:20px 16px">'+
+  '<div style="font-size:52px;animation:float 2s ease infinite;margin-bottom:4px">'+t2.icon+'</div>'+
+  '<div style="font-size:24px;font-weight:900;color:'+t2.color+'">'+t2.label+'</div>'+
+  '<div style="font-size:13px;color:'+T.sb+';margin-top:4px;margin-bottom:14px">'+r.name+'</div>'+
+  '<div style="'+cds("display:inline-block;padding:16px 24px;margin-bottom:14px")+'">'+
+  '<div style="display:flex;gap:24px;text-align:center">'+
+  '<div><div style="font-size:8px;color:'+T.mt+';text-transform:uppercase;letter-spacing:1px">'+t("dev")+'</div><div style="font-size:22px;font-weight:900;color:'+t2.color+';font-family:monospace">'+(r.diffMs>=9999?"---":r.diffMs+"ms")+'</div></div>'+
+  '<div><div style="font-size:8px;color:'+T.mt+';text-transform:uppercase;letter-spacing:1px">'+t("pts")+'</div><div style="font-size:22px;font-weight:900;color:'+A.am+';font-family:monospace">'+r.finalScore+'</div></div></div></div>'+
+  (r.wager>0?'<div style="font-size:12px;color:'+(r.wagerResult>=0?A.em:A.ro)+';margin-bottom:6px">'+(r.wagerResult>=0?"\u2705 +":"\u274C ")+r.wager+' Wager</div>':'')+
+  (r.revenge?'<div style="font-size:12px;color:'+A.am+';margin-bottom:6px">\uD83D\uDD25 2x Revenge!</div>':'')+
+  '<button class="btn" style="margin-top:10px" onclick="pNextAfterResult()">'+t("next")+'</button></div></div>'
+}
+function pNextAfterResult(){
+  sfxTap();
+  if(P.ci<P.players.length-1){
+    P.ci++;P.wager=0;P.sab=null;
+    partySetState("PLAYER_PASS")
+  } else {
+    // All players done — update scores
+    P.results.forEach(function(r){P.scores[r.idx]+=r.finalScore});
+    // Update crown
+    var maxS=Math.max.apply(null,P.scores);
+    var newCrown=P.scores.indexOf(maxS);
+    if(newCrown!==P.crownIdx){sfxCrown();P.crownIdx=newCrown}
+    // Find last place for next round
+    var minS=Math.min.apply(null,P.scores);
+    P.lastPlaceIdx=P.scores.indexOf(minS);
+    partySetState("ROUND_REVEAL")
+  }
+}
+
+// ═══ STATE: ROUND_REVEAL ═══
+function renderRoundReveal(){
+  sfxDrum();vb(25);
+  var sorted=P.results.slice().sort(function(a,b){return b.finalScore-a.finalScore});
+  var maxScore=Math.max.apply(null,sorted.map(function(r){return r.finalScore}).concat([1]));
+
+  $("app").innerHTML='<div style="padding:20px 16px;animation:fadeIn .4s ease">'+
+  '<div class="ct" style="margin-bottom:16px"><div style="font-size:12px;color:'+T.mt+';letter-spacing:3px;text-transform:uppercase">'+t("drumroll")+'</div>'+
+  '<div style="display:flex;gap:6px;justify-content:center;margin-top:12px"><div style="width:8px;height:8px;border-radius:4px;background:'+A.v+';animation:dotP 1.2s ease 0s infinite"></div><div style="width:8px;height:8px;border-radius:4px;background:'+A.v+';animation:dotP 1.2s ease .2s infinite"></div><div style="width:8px;height:8px;border-radius:4px;background:'+A.v+';animation:dotP 1.2s ease .4s infinite"></div></div></div>'+
+  '<div id="rvb"></div></div>';
+
+  // Reveal one by one: worst first, best last
+  var revealIdx=0;
+  setTimeout(function(){
+    var iv2=setInterval(function(){
+      var el=$("rvb");if(!el){clearInterval(iv2);return}
+      var html="";
+      sorted.forEach(function(r,i){
+        var show=i>=(sorted.length-1-revealIdx);
+        var w=Math.max(8,(r.finalScore/maxScore)*100);
+        html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;opacity:'+(show?1:.12)+';transition:opacity .3s;'+(show?"animation:sL .3s ease both":"")+'">'+
+        '<div style="width:30px;text-align:center;font-size:18px">'+(show?(i===0?"\uD83D\uDC51":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":"#"+(i+1)):"")+'</div>'+
+        '<div style="font-size:20px">'+r.avatar+'</div>'+
+        '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:'+T.tx+';margin-bottom:3px">'+r.name+'</div>'+
+        '<div style="height:12px;background:'+T.ra+';border-radius:6px;overflow:hidden"><div style="height:100%;border-radius:6px;background:'+(i===0?"linear-gradient(135deg,"+A.v+","+A.pk+")":i===1?"linear-gradient(135deg,"+A.em+","+A.cy+")":"linear-gradient(135deg,#6366F1,"+A.v+")")+';width:'+(show?w+"%":"0%")+';transition:width .6s ease"></div></div></div>'+
+        '<div style="font-family:monospace;font-weight:900;font-size:14px;color:'+(show?(i===0?A.am:T.tx):T.mt)+';min-width:40px;text-align:right">'+(show?r.finalScore:"")+'</div></div>'
+      });
+      el.innerHTML=html;
+      sfxTick();vb(10);
+      revealIdx++;
+      if(revealIdx>=sorted.length){
+        clearInterval(iv2);
+        setTimeout(function(){
+          sfxGreat();vb([25,40,25,40,70]);
+          var btn=document.createElement("div");
+          btn.className="ct";btn.style.marginTop="16px";
+          btn.innerHTML='<button class="btn" onclick="pAfterReveal()">'+t("next")+'</button>';
+          el.appendChild(btn)
+        },600)
+      }
+    },600)
+  },1800)
+}
+function pAfterReveal(){
+  if(P.daresOn){
+    var worst=P.results.slice().sort(function(a,b){return a.finalScore-b.finalScore})[0];
+    P.dareLoser=P.players[worst.idx];
+    partySetState("DARE")
+  } else {
+    pAdvanceRound()
+  }
+}
+
+// ═══ STATE: DARE ═══
+function renderDare(){
+  var loser=P.dareLoser;
+  var dares=DARE_L[lang]||DARE_L.de;
+  sfxSpin();vb(25);
+  $("app").innerHTML='<div class="ct" style="padding:24px 16px;animation:pop .4s ease">'+
+  '<div style="font-size:12px;color:'+A.ro+';letter-spacing:3px;text-transform:uppercase;margin-bottom:12px">'+t("dare")+'</div>'+
+  '<div style="font-size:28px;margin-bottom:8px">'+loser.avatar+'</div>'+
+  '<div style="font-size:18px;font-weight:800;color:'+T.tx+';margin-bottom:16px">'+loser.name+' '+t("dareQ")+'</div>'+
+  '<div style="font-size:48px;animation:gSpin 1s linear infinite">\uD83C\uDFA1</div></div>';
+
+  var d=randEl(dares);
+  setTimeout(function(){
+    sfxSab();vb([50,25,50]);
+    $("app").innerHTML='<div class="ct" style="padding:24px 16px;animation:pop .4s ease">'+
+    '<div style="font-size:12px;color:'+A.ro+';letter-spacing:3px;text-transform:uppercase;margin-bottom:12px">'+t("dare")+'</div>'+
+    '<div style="font-size:28px;margin-bottom:8px">'+loser.avatar+'</div>'+
+    '<div style="font-size:18px;font-weight:800;color:'+T.tx+';margin-bottom:16px">'+loser.name+'</div>'+
+    '<div style="'+cds("padding:20px 24px;border-top:3px solid "+A.ro+";max-width:300px;margin:0 auto 16px")+'"><div style="font-size:16px;font-weight:700;color:'+T.tx+';line-height:1.5">'+d+'</div></div>'+
+    '<button class="btn" onclick="pAdvanceRound()">'+t("next")+'</button></div>'
+  },2500)
+}
+
+// ═══ ADVANCE ROUND ═══
+function pAdvanceRound(){
+  sfxTap();
+  if(P.round>=P.totalRnds){partySetState("GAME_END")}
+  else{partySetState("ROUND_START")}
+}
+
+// ═══ STATE: GAME_END ═══
+function renderGameEnd(){
+  confetti();sfxWin();vb([25,40,25,40,70]);
+  var ranked=P.players.map(function(p,i){return{name:p.name,avatar:p.avatar,score:P.scores[i]}}).sort(function(a,b){return b.score-a.score});
+
+  $("app").innerHTML='<div style="animation:pop .5s ease">'+
+  '<div class="ct" style="margin-bottom:20px"><div style="font-size:60px;animation:float 2s ease infinite">\uD83C\uDFC6</div>'+
+  '<div style="font-size:26px;font-weight:900;background:linear-gradient(135deg,'+A.am+',#FBBF24);-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+ranked[0].name+' '+t("winner")+'</div></div>'+
+  '<div style="font-size:12px;color:'+T.mt+';letter-spacing:3px;text-transform:uppercase;text-align:center;margin-bottom:12px">'+t("final")+'</div>'+
+  ranked.map(function(r,i){
+    return'<div style="display:flex;align-items:center;gap:10px;'+cds("padding:12px 14px;margin-bottom:8px;border-left:3px solid "+(i===0?A.am:i===1?A.em:i===2?A.v:T.ln)+";animation:sL .4s ease "+i*.08+"s both")+'">'+
+    '<div style="font-size:20px;width:30px;text-align:center">'+(i===0?"\uD83D\uDC51":i===1?"\uD83E\uDD48":i===2?"\uD83E\uDD49":"#"+(i+1))+'</div>'+
+    '<div style="font-size:22px">'+r.avatar+'</div>'+
+    '<div style="flex:1"><div style="font-weight:800;font-size:14px;color:'+T.tx+'">'+r.name+'</div></div>'+
+    '<div style="font-family:monospace;font-weight:900;font-size:18px;color:'+(i===0?A.am:T.tx)+'">'+r.score+'</div></div>'
+  }).join("")+
+  '<div class="ct" style="margin-top:16px"><button class="btn" onclick="home()">'+t("playAgain")+'</button></div></div>'
+}
+
+// Entry point from home screen
+function partyLobby(){partySetState("LOBBY")}
+
 
 // ══════════════════════════════════════
 
