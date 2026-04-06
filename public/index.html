@@ -150,8 +150,11 @@ var partyMyId=null;
 // ═══ SOCKET LISTENERS ═══
 so.on("party",function(data){
   ps=data;
-  partyMyId=myId;
+  if(!partyMyId)partyMyId=myId||so.id;
   if(!partyActive)return;
+  // Update host status from server state
+  var me=ps.players.find(function(p){return p.id===partyMyId});
+  if(me)isH=me.host;
   partyRender();
 });
 so.on("partyGo",function(){
@@ -187,7 +190,11 @@ function partyRender(){
   }
 }
 
-function pxIsHost(){return ps&&ps.players.find(function(p){return p.id===partyMyId&&p.host})}
+function pxIsHost(){
+  if(!ps||!ps.players)return false;
+  var me=ps.players.find(function(p){return p.id===partyMyId});
+  return me&&me.host;
+}
 function pxMe(){return ps?ps.players.find(function(p){return p.id===partyMyId}):null}
 
 // ═══ CROWN BAR ═══
@@ -220,11 +227,11 @@ function partyLobby(){
 function pxRenderAv(){var g=$("ppav");if(!g)return;g.innerHTML=AV.slice(0,10).map(function(a){return'<button onclick="window._ppAv=\''+a+'\';pxRenderAv()" style="width:36px;height:36px;border-radius:10px;font-size:18px;display:flex;align-items:center;justify-content:center;background:'+((window._ppAv||AV[0])===a?A.v+"30":T.ra)+';border:'+((window._ppAv||AV[0])===a?"2px solid "+A.v:"1px solid "+T.ln)+'">'+a+'</button>'}).join("")}
 
 function pxDoCreate(){var n=$("ppn").value.trim();if(!n)return;sfxTap();
-  so.emit("partyCreate",{name:n,avatar:window._ppAv||AV[0],rounds:5,daresOn:true},function(r){if(r.ok){rc=r.code;myN=n;partyActive=true}else alert(r.err)})}
+  so.emit("partyCreate",{name:n,avatar:window._ppAv||AV[0],rounds:5,daresOn:true},function(r){if(r.ok){rc=r.code;myN=n;partyActive=true;partyMyId=myId||so.id;isH=true}else alert(r.err)})}
 
 function pxDoJoinScreen(){var n=$("ppn").value.trim();if(!n)return;sfxTap();myN=n;myA=window._ppAv||AV[0];
   $("app").innerHTML='<div class="ct" style="animation:up .4s ease;padding-top:30px"><div style="font-size:36px;margin-bottom:8px">\uD83D\uDD11</div><div style="font-size:18px;font-weight:800;color:'+T.tx+';margin-bottom:14px">'+t("joinRoom")+'</div><input id="ppc" placeholder="CODE" maxlength="6" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,\'\')" style="width:100%;max-width:260px;background:'+T.ra+';border:2px solid '+T.ln+';border-radius:14px;padding:16px;color:'+T.tx+';font-size:26px;font-weight:900;font-family:monospace;text-align:center;letter-spacing:8px"><div id="pperr" style="color:'+A.ro+';font-size:12px;margin-top:8px"></div><button class="btn" style="margin-top:12px" onclick="pxDoJoin()">'+t("join")+'</button><br><button class="btn2" style="margin-top:12px" onclick="partyLobby()">\u2190 '+t("back")+'</button></div>'}
-function pxDoJoin(){var c=$("ppc").value;if(c.length<6)return;so.emit("partyJoin",{code:c,name:myN,avatar:myA},function(r){if(r.ok){rc=r.code;partyActive=true}else{var e=$("pperr");if(e)e.textContent=r.err;sfxBad()}})}
+function pxDoJoin(){var c=$("ppc").value;if(c.length<6)return;so.emit("partyJoin",{code:c,name:myN,avatar:myA},function(r){if(r.ok){rc=r.code;partyActive=true;partyMyId=myId||so.id;isH=false}else{var e=$("pperr");if(e)e.textContent=r.err;sfxBad()}})}
 function pxLeave(){partyActive=false;partyLastStatus="";ps=null;home()}
 
 // ═══ LOBBY ═══
