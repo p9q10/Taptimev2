@@ -381,11 +381,12 @@ function resolveRound(code){
 
 // ═══ PARTY MODE SERVER ═══
 const PARTY_MODES=["buzzer","reflex","blind","zeit"];
-const SAB_CARDS=["shake","speed","blind2","reverse"];
+const SAB_CARDS=["shake2","speed","blind2","reverse"];
 const DARES=["10 jumping jacks","Sing a chorus","Talk in an accent","Best celebrity impression","Speak only in questions","Show your best dance move","Speak in slow motion 30s","Make everyone laugh in 15s","Tell something embarrassing","Swap seats with someone"];
 
 function partyGenTarget(mode){
   if(mode==="zeit")return Math.round((2+Math.random()*4)*10)/10;
+  if(mode==="blind")return Math.round((1+Math.random()*5)*1000)/1000; // e.g. 2.347 — hard to memorize
   return Math.round((1.5+Math.random()*3.5)*10)/10;
 }
 
@@ -420,7 +421,8 @@ function partyStartRound(room){
   room.mode=PARTY_MODES[Math.floor(Math.random()*PARTY_MODES.length)];
   room.target=partyGenTarget(room.mode);
   const idx=PARTY_MODES.indexOf(room.mode);
-  room.rouletteAngle=(3+Math.random()*2)*360+idx*90+Math.random()*60+15;
+  const QUAD_ANGLES=[45,315,135,225]; // buzzer=top-left, reflex=top-right, blind=bottom-left, zeit=bottom-right
+  room.rouletteAngle=(3+Math.random()*2)*360+QUAD_ANGLES[idx]+Math.random()*30-15;
   room.status="roulette";partyBC(room);
   setTimeout(()=>{
     if(room.status!=="roulette")return;
