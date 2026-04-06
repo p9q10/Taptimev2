@@ -54,6 +54,7 @@ function findRoomBySocket(sid){
 // ═══ CONNECTION ═══
 io.on("connection",sk=>{
   console.log("connect:",sk.id);
+  registerPartyHandlers(sk);
 
   // CREATE ROOM
   sk.on("create",({name,avatar,mode,rounds},cb)=>{
@@ -376,6 +377,137 @@ function resolveRound(code){
   room.status="results";
   room.lastResults={round:room.round,target:room.target,results};
   broadcast(code);
+}
+
+// ═══ PARTY MODE SERVER ═══
+const PARTY_MODES=["buzzer","reflex","blind","zeit"];
+const SAB_CARDS=["shake","speed","blind2","reverse"];
+const DARES=["10 jumping jacks","Sing a chorus","Talk in an accent","Best celebrity impression","Speak only in questions","Show your best dance move","Speak in slow motion 30s","Make everyone laugh in 15s","Tell something embarrassing","Swap seats with someone"];
+
+function partyGenTarget(mode){
+  if(mode==="zeit")return Math.round((2+Math.random()*4)*10)/10;
+  return Math.round((1.5+Math.random()*3.5)*10)/10;
+}
+
+function partyState(room){
+  const players=room.players.map(p=>({
+    id:p.id,name:p.name,avatar:p.avatar,host:p.host,connected:p.connected,
+    score:room.scores[p.id]||0,
+    submitted:!!room.subs[p.id],
+    sabChosen:!!room.sabChoices[p.id],
+    wagerChosen:room.wagers[p.id]!==undefined
+  }));
+  return{code:room.code,type:"party",status:room.status,round:room.round,totalRounds:room.totalRounds,
+    mode:room.mode,daresOn:room.daresOn,target:room.mode==="zeit"?null:room.target,
+    players,crownId:room.crownId,lastPlace:room.lastPlace,
+    submittedCount:Object.keys(room.subs).length,
+    activeCount:players.filter(p=>p.connected).length,
+    roundResults:room.roundResults,rouletteAngle:room.rouletteAngle,
+    dareText:room.dareText,dareLoser:room.dareLoser};
+}
+
+function partyBC(room){
+  const base=partyState(room);
+  room.players.forEach(p=>{
+    const d={...base,mySabotage:room.sabotages[p.id]||null,myCards:room.cards[p.id]||[],myWager:room.wagers[p.id],isRevenge:room.lastPlace===p.id};
+    io.to(p.id).emit("party",d);
+  });
+}
+
+function partyStartRound(room){
+  room.round++;room.subs={};room.sabotages={};room.sabChoices={};room.wagers={};
+  room.roundResults=null;room.dareText=null;room.dareLoser=null;
+  room.mode=PARTY_MODES[Math.floor(Math.random()*PARTY_MODES.length)];
+  room.target=partyGenTarget(room.mode);
+  const idx=PARTY_MODES.indexOf(room.mode);
+  room.rouletteAngle=(3+Math.random()*2)*360+idx*90+Math.random()*60+15;
+  room.status="roulette";partyBC(room);
+  setTimeout(()=>{
+    if(room.status!=="roulette")return;
+    const anyCards=room.players.some(p=>(room.cards[p.id]||[]).length>0);
+    if(anyCards&&room.players.filter(p=>p.connected).length>1){
+      room.status="sabotage";partyBC(room);
+      setTimeout(()=>{if(room.status==="sabotage"){partyApplySab(room);partyWager(room)}},15000);
+    }else partyWager(room);
+  },4500);
+}
+
+function partyApplySab(room){
+  Object.entries(room.sabChoices).forEach(([fid,ch])=>{
+    if(ch&&ch.target&&ch.card){room.sabotages[ch.target]=ch.card;const c=room.cards[fid]||[];const i=c.indexOf(ch.card);if(i>=0)c.splice(i,1)}
+  });
+}
+
+function partyWager(room){room.status="wager";partyBC(room);
+  setTimeout(()=>{if(room.status==="wager"){room.players.filter(p=>p.connected).forEach(p=>{if(room.wagers[p.id]===undefined)room.wagers[p.id]=0});partyPlay(room)}},12000);
+}
+
+function partyPlay(room){
+  if(room.mode==="reflex"){
+    room.status="countdown";partyBC(room);
+    const delay=1500+Math.random()*2500;
+    setTimeout(()=>{if(room.status!=="countdown")return;room.status="playing";room._reflexGo=Date.now();partyBC(room);io.to(room.code).emit("partyGo")},delay);
+  }else if(room.mode==="zeit"){
+    room.status="countdown";partyBC(room);
+    setTimeout(()=>{if(room.status!=="countdown")return;room.status="playing";room._zeitStart=Date.now();partyBC(room);io.to(room.code).emit("partyGo");
+      setTimeout(()=>{if(room.status==="playing"&&room.mode==="zeit"){room.zeitReal=Math.round(((Date.now()-room._zeitStart)/1000)*1000)/1000;room.status="waiting";io.to(room.code).emit("partyZeitStop",{real:room.zeitReal});partyBC(room);
+        setTimeout(()=>{if(room.status==="waiting")partyResolve(room)},15000)}},room.target*1000);
+    },4000);
+  }else{room.status="playing";partyBC(room)}
+}
+
+function partyCheckSubs(room){
+  const con=room.players.filter(p=>p.connected);
+  if(Object.keys(room.subs).length>=con.length)partyResolve(room);
+}
+
+function partyResolve(room){
+  const con=room.players.filter(p=>p.connected);
+  const results=con.map(p=>{
+    const sub=room.subs[p.id];let diffMs=9999;
+    if(sub){if(room.mode==="zeit")diffMs=Math.round(Math.abs(sub.time-(room.zeitReal||room.target))*1000);else if(room.mode==="reflex")diffMs=sub.diffMs||9999;else diffMs=Math.round(Math.abs(sub.time-room.target)*1000)}
+    let score=Math.max(0,1000-diffMs);if(room.lastPlace===p.id)score*=2;
+    const tier=diffMs<=150?"PERFECT":diffMs<=300?"GOOD":"FAIL";
+    const w=room.wagers[p.id]||0;const wr=w>0?(tier==="FAIL"?-w:w):0;
+    return{id:p.id,name:p.name,avatar:p.avatar,diffMs,score,wager:w,wagerResult:wr,finalScore:Math.max(0,score+wr),tier,revenge:room.lastPlace===p.id,sab:room.sabotages[p.id]||null,time:sub?sub.time:0}
+  }).sort((a,b)=>a.diffMs-b.diffMs);
+  results.forEach((r,i)=>r.rank=i+1);
+  results.forEach(r=>{room.scores[r.id]=(room.scores[r.id]||0)+r.finalScore});
+  let maxS=0,cId=null;Object.entries(room.scores).forEach(([id,s])=>{if(s>maxS){maxS=s;cId=id}});room.crownId=cId;
+  let minS=Infinity,lId=null;Object.entries(room.scores).forEach(([id,s])=>{if(s<minS){minS=s;lId=id}});room.lastPlace=lId;
+  const worst=results[results.length-1];room.dareLoser=worst?{name:worst.name,avatar:worst.avatar,id:worst.id}:null;
+  room.roundResults=results;room.status="reveal";partyBC(room);
+}
+
+function registerPartyHandlers(sk){
+  sk.on("partyCreate",({name,avatar,rounds,daresOn},cb)=>{
+    if(!name)return cb({ok:false,err:"No name"});const code=mkCode();
+    const room={code,type:"party",status:"lobby",players:[{id:sk.id,name,avatar,host:true,connected:true}],
+      round:0,totalRounds:rounds||5,daresOn:daresOn!==false,mode:null,target:0,
+      scores:{},cards:{},subs:{},sabotages:{},sabChoices:{},wagers:{},
+      lastPlace:null,crownId:null,roundResults:null,zeitReal:null,rouletteAngle:0,dareText:null,dareLoser:null};
+    room.scores[sk.id]=0;room.cards[sk.id]=[SAB_CARDS[Math.floor(Math.random()*4)],SAB_CARDS[Math.floor(Math.random()*4)]];
+    rooms.set(code,room);sk.join(code);cb({ok:true,code});partyBC(room);
+  });
+  sk.on("partyJoin",({code,name,avatar},cb)=>{
+    const room=rooms.get(code&&code.toUpperCase());
+    if(!room||room.type!=="party")return cb({ok:false,err:"Room not found"});
+    if(room.status!=="lobby")return cb({ok:false,err:"Game started"});
+    if(room.players.length>=8)return cb({ok:false,err:"Full"});
+    if(room.players.find(p=>p.name===name))return cb({ok:false,err:"Name taken"});
+    room.players.push({id:sk.id,name,avatar,host:false,connected:true});
+    room.scores[sk.id]=0;room.cards[sk.id]=[SAB_CARDS[Math.floor(Math.random()*4)],SAB_CARDS[Math.floor(Math.random()*4)]];
+    sk.join(code.toUpperCase());cb({ok:true,code:code.toUpperCase()});partyBC(room);
+  });
+  sk.on("partyStart",()=>{const f=findRoomBySocket(sk.id);if(!f)return;const{room}=f;if(room.type!=="party")return;const p=room.players.find(x=>x.id===sk.id);if(!p||!p.host||room.players.filter(x=>x.connected).length<2)return;partyStartRound(room)});
+  sk.on("partySabChoice",({target,card})=>{const f=findRoomBySocket(sk.id);if(!f)return;const{room}=f;if(room.status!=="sabotage")return;room.sabChoices[sk.id]={target,card};partyBC(room);
+    const wc=room.players.filter(p=>p.connected&&(room.cards[p.id]||[]).length>0);if(wc.every(p=>room.sabChoices[p.id])){partyApplySab(room);partyWager(room)}});
+  sk.on("partyWager",({amount})=>{const f=findRoomBySocket(sk.id);if(!f)return;const{room}=f;if(room.status!=="wager")return;room.wagers[sk.id]=amount||0;partyBC(room);
+    const con=room.players.filter(p=>p.connected);if(con.every(p=>room.wagers[p.id]!==undefined))partyPlay(room)});
+  sk.on("partySubmit",({time,diffMs})=>{const f=findRoomBySocket(sk.id);if(!f)return;const{room}=f;if(room.status!=="playing"&&room.status!=="waiting")return;if(room.subs[sk.id])return;room.subs[sk.id]={time:time||0,diffMs:diffMs||0};partyBC(room);partyCheckSubs(room)});
+  sk.on("partyNextRound",()=>{const f=findRoomBySocket(sk.id);if(!f)return;const{room}=f;const p=room.players.find(x=>x.id===sk.id);if(!p||!p.host)return;
+    if(room.status==="reveal"){if(room.daresOn&&room.dareLoser){room.dareText=DARES[Math.floor(Math.random()*DARES.length)];room.status="dare";partyBC(room)}else{if(room.round>=room.totalRounds){room.status="ended";partyBC(room)}else partyStartRound(room)}}
+    else if(room.status==="dare"){if(room.round>=room.totalRounds){room.status="ended";partyBC(room)}else partyStartRound(room)}});
 }
 
 // ═══ ROUTES ═══
