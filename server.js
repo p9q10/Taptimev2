@@ -22,6 +22,8 @@ function genRoundData(mode){
 }
 
 function roomState(room){
+  // Build simplified subs map (just pid→true) so clients know who submitted
+  var subMap={};Object.keys(room.subs||{}).forEach(function(k){subMap[k]=true});
   return{
     code:room.code,phase:room.phase,mode:room.mode,format:room.format,
     totalRounds:room.totalRounds,currentRound:room.currentRound,
@@ -29,7 +31,9 @@ function roomState(room){
     players:room.players.map(p=>({id:p.id,name:p.name,avatar:p.avatar,team:p.team,connected:p.connected})),
     results:room.results,
     finalScores:room.finalScores,
-    hostId:room.hostId
+    scores:room.scores,
+    hostId:room.hostId,
+    subs:subMap
   };
 }
 
