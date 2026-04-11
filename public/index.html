@@ -44,7 +44,18 @@ var TC={a:"#EC4899",b:"#06B6D4"};
 function $(id){return document.getElementById(id)}
 
 so.on("connect",function(){myId=so.id});
-so.on("sync",function(data){room=data;render()});
+var lastPhase="",lastRound=0;
+so.on("sync",function(data){
+  room=data;
+  // Reset submitted when new round starts
+  if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound}
+  // Don't re-render playing if already playing and not submitted (prevents resetting mid-game)
+  if(room.phase==="playing"&&lastPhase==="playing"&&!submitted){return}
+  // Update waiting screen if someone submitted
+  if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}
+  lastPhase=room.phase;
+  render();
+});
 
 function render(){if(!room)return;
   switch(room.phase){case"lobby":renderLobby();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"gameover":renderGameOver();break}}
