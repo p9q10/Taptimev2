@@ -48,21 +48,19 @@ var MODES=[{id:"bullseye",name:"Bullseye",desc:"Triff die Zielzeit",icon:"🎯",
 {id:"reaction",name:"Reaktion",desc:"Finde den grünen Buzzer",icon:"⚡",color:"#D4A04A"}];
 var DESCS={bullseye:"START drücken, Zielzeit im Kopf zählen, STOPP drücken.",bullseyeTeam:"Gemeinsam die Zielzeit erreichen. Jeder zählt seinen Teil, Kapitän bestätigt.",timesense:"Buzzer wird grün = zählen! Die App stoppt. Du gibst deine Schätzung ein.",memory:"Zahl erscheint kurz. Merken! Dann eingeben.",reaction:"10 Buzzer. Einer wird grün. Sofort drücken!"};
 function $(id){return document.getElementById(id)}
-function fullClientReset(){clearTimeout(window._tsWait);clearTimeout(window._rt);window._bs=null;window._rs=null;window._tbs=null;submitted=false;lastRound=0;lastPhase="";lastTeamSubCount=0;lastReadyCount=0}
+function fullClientReset(){clearTimeout(window._tsWait);clearTimeout(window._rt);window._bs=null;window._rs=null;window._tbs=null;submitted=false;lastRound=0;lastPhase="";lastTeamSubCount=0}
 setTimeout(function(){var s=$("splash");if(s)s.style.display="none";home()},2500);
 so.on("connect",function(){myId=so.id});
-var lastPhase="",lastRound=0,submitted=false,lastTeamSubCount=0,lastReadyCount=0;
+var lastPhase="",lastRound=0,submitted=false,lastTeamSubCount=0;
 
 so.on("sync",function(data){room=data;
-  if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound;lastTeamSubCount=0;lastReadyCount=0}
+  if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound;lastTeamSubCount=0}
   if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}
   var tsC=room.teamSubs?Object.keys(room.teamSubs).length:0;var tCh=room.roundData&&room.roundData.teamMode&&tsC!==lastTeamSubCount;if(tCh)lastTeamSubCount=tsC;
-  var rdC=room.readyPlayers?Object.keys(room.readyPlayers).length:0;var rdCh=room.mode==="memory"&&rdC!==lastReadyCount;if(rdCh)lastReadyCount=rdC;
-  if(room.phase==="playing"&&lastPhase==="playing"&&!submitted&&!tCh&&!rdCh)return;
+  if(room.phase==="playing"&&lastPhase==="playing"&&!submitted&&!tCh)return;
   if(room.phase===lastPhase&&(room.phase==="results"||room.phase==="gameover"||room.phase==="pregame"||room.phase==="elimination"))return;
   lastPhase=room.phase;render()});
 so.on("zeitStop",function(d){if(submitted||!room||room.phase!=="playing"||room.mode!=="timesense")return;window._zeitActual=d.actual;sfxStop();vb([80,30,80]);renderZeitInput()});
-so.on("memoryShow",function(){if(submitted||!room||room.phase!=="playing"||room.mode!=="memory")return;showMemoryNumber()});
 
 function render(){if(!room)return;switch(room.phase){case"lobby":renderLobby();break;case"pregame":renderPreGame();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"elimination":renderElimination();break;case"gameover":renderGameOver();break}}
 
@@ -148,22 +146,22 @@ function zeitSub(){var el=$("tI");if(!el)return;var g=parseFloat(el.value);if(is
   if(dev<.3){sfxGood();vb([40,20,40])}else{sfxBad();vb(60)}
   ($("tC")||$("app")).innerHTML='<div class="ct" style="padding:20px"><div style="font-size:14px;color:#999;margin-bottom:4px">Tipp: '+g.toFixed(1)+'s</div><div style="font-size:14px;color:#999;margin-bottom:12px">Tatsächlich: '+actual.toFixed(1)+'s</div><div style="font-size:22px;font-weight:900;color:'+(dev<.3?"#4AAD7A":dev<1?"#D4A04A":"#D94A4A")+'">'+(dev<.3?"Stark!":dev<1?"Knapp!":"Daneben!")+'</div><div style="font-size:14px;color:#999;margin-top:4px">'+devS+'s Abweichung</div></div>';doSubmit(devS)}
 
-// ═══ MEMORY (self-start) ═══
+// ═══ MEMORY (individual start, 3-4 decimals) ═══
 function renderMemory(hdr){
-  var ready=room.readyPlayers&&room.readyPlayers[room.myId];
-  if(ready){$("app").innerHTML='<div style="animation:fadeIn .3s ease">'+hdr+'<div class="cd" style="padding:28px"><div class="ct" id="mC"><div style="font-size:13px;color:#999">Warte auf alle Spieler...</div><div style="font-size:40px;margin-top:20px;animation:pulse 1s infinite">👀</div></div></div></div>';return}
-  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="padding:28px"><div class="ct"><div style="font-size:14px;font-weight:700;margin-bottom:8px">Memory</div><div style="font-size:13px;color:#999;margin-bottom:24px">Wenn du bereit bist, drück den Button.<br>Die Zahl erscheint kurz — merk sie dir!</div><button class="btn" onclick="so.emit(\'playerReady\')">Ich bin bereit</button></div></div></div>'}
-function showMemoryNumber(){
-  var shown=room.roundData.shownTime;var dur=room.roundData.showDuration||300;
+  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="padding:28px"><div class="ct" id="mC"><div style="font-size:14px;font-weight:700;margin-bottom:8px">Memory</div><div style="font-size:13px;color:#999;margin-bottom:24px">Drück Bereit. Eine Zahl blitzt kurz auf.<br>Merk sie dir und gib sie ein!</div><button class="btn" onclick="startMemory()">Bereit</button></div></div></div>'}
+function startMemory(){
+  var shown=room.roundData.shownTime;var dur=room.roundData.showDuration||300;var dec=room.roundData.decimals||3;
   sfxTick();vb(40);
   var mc=$("mC");if(!mc)return;
-  mc.innerHTML='<div style="animation:pop .2s ease"><div style="font-size:52px;font-weight:900;color:#4AAD7A;margin:20px 0;font-family:monospace">'+shown.toFixed(1)+'<span style="font-size:20px;color:#999">s</span></div></div>';
+  mc.innerHTML='<div style="animation:pop .2s ease"><div class="lb" style="color:#D94A4A">JETZT MERKEN!</div><div style="font-size:44px;font-weight:900;color:#4AAD7A;margin:20px 0;font-family:monospace">'+shown.toFixed(dec)+'<span style="font-size:16px;color:#999">s</span></div></div>';
   setTimeout(function(){var mc2=$("mC");if(!mc2)return;sfxStop();vb(40);
-    mc2.innerHTML='<div style="animation:up .4s ease"><div class="lb">Was war die Zahl?</div><div style="font-size:40px;margin:16px 0">🤔</div><div style="max-width:180px;margin:0 auto 16px"><input id="mI" class="inp" style="font-size:22px" placeholder="?.?s" inputmode="decimal"></div><button class="btn btn-green" onclick="memSub()">Bestätigen</button></div>';
+    mc2.innerHTML='<div style="animation:up .4s ease"><div class="lb">Was war die Zahl?</div><div style="font-size:40px;margin:16px 0">🤔</div><div style="max-width:200px;margin:0 auto 16px"><input id="mI" class="inp" style="font-size:20px" placeholder="z.B. 3.456" inputmode="decimal"></div><button class="btn btn-green" onclick="memSub()">Bestätigen</button></div>';
     setTimeout(function(){var i=$("mI");if(i)i.focus()},100)},dur)}
-function memSub(){var el=$("mI");if(!el)return;var g=parseFloat(el.value);if(isNaN(g))return;var shown=room.roundData.shownTime;var dev=Math.abs(g-shown);var devS=parseFloat(dev.toFixed(1));
-  if(dev<.2){sfxGood();vb([40,20,40])}else{sfxBad();vb(60)}
-  var mc=$("mC");if(mc)mc.innerHTML='<div style="font-size:14px;color:#999;margin-bottom:4px">Tipp: '+g.toFixed(1)+'s</div><div style="font-size:14px;color:#999;margin-bottom:12px">Richtig: '+shown.toFixed(1)+'s</div><div style="font-size:22px;font-weight:900;color:'+(dev<.2?"#4AAD7A":dev<.5?"#D4A04A":"#D94A4A")+'">'+devS+'s</div>';doSubmit(devS)}
+function memSub(){var el=$("mI");if(!el)return;var g=parseFloat(el.value);if(isNaN(g))return;
+  var shown=room.roundData.shownTime;var dec=room.roundData.decimals||3;
+  var dev=Math.abs(g-shown);var devS=parseFloat(dev.toFixed(1));
+  if(dev<.05){sfxGood();vb([40,20,40])}else{sfxBad();vb(60)}
+  var mc=$("mC");if(mc)mc.innerHTML='<div style="font-size:14px;color:#999;margin-bottom:4px">Tipp: '+g.toFixed(dec)+'s</div><div style="font-size:14px;color:#999;margin-bottom:12px">Richtig: '+shown.toFixed(dec)+'s</div><div style="font-size:22px;font-weight:900;color:'+(dev<.05?"#4AAD7A":dev<.3?"#D4A04A":"#D94A4A")+'">'+devS+'s Abweichung</div>';doSubmit(devS)}
 
 // ═══ REACTION (10 buzzers) ═══
 function renderReaction(hdr){var gIdx=room.roundData.greenIdx;
