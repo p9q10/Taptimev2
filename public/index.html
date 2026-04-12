@@ -67,7 +67,7 @@ so.on("memoryShow",function(){if(submitted||!room||room.phase!=="playing"||room.
 function render(){if(!room)return;switch(room.phase){case"lobby":renderLobby();break;case"pregame":renderPreGame();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"elimination":renderElimination();break;case"gameover":renderGameOver();break}}
 
 // ═══ HOME ═══
-function home(){room=null;fullClientReset();
+function home(){so.emit("leave");room=null;fullClientReset();
   $("app").innerHTML='<div class="ct" style="animation:up .5s ease;padding-top:30px"><div style="font-size:38px;font-weight:900;color:#1a1a1a;margin-bottom:4px">TimeTap</div><div style="font-size:13px;color:#999;margin-bottom:32px">Wähle ein Spiel</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
   MODES.map(function(m){return'<button onclick="initAudio();pickGame(\''+m.id+'\')" style="background:#fff;border:2px solid #E8E4DE;border-radius:18px;padding:24px 12px;color:#1a1a1a;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.06);transition:transform .12s"><div style="font-size:34px;margin-bottom:8px">'+m.icon+'</div><div style="font-size:14px;font-weight:800">'+m.name+'</div><div style="font-size:10px;color:#999;margin-top:4px;line-height:1.3">'+m.desc+'</div></button>'}).join('')+'</div></div>'}
 
