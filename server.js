@@ -65,6 +65,18 @@ function findRoom(sid){for(const[c,r]of rooms){const p=r.players.find(x=>x.id===
 function clearTimers(room){(room.zeitTimers||[]).forEach(t=>clearTimeout(t));room.zeitTimers=[]}
 function activePlayers(room){return room.players.filter(p=>p.connected&&!p.eliminated)}
 
+// Remove player from any room they're in
+function leaveCurrentRoom(sk){
+  const f=findRoom(sk.id);if(!f)return;
+  const{code,room,player}=f;
+  player.connected=false;
+  room.players=room.players.filter(p=>p.id!==sk.id);
+  sk.leave(code);
+  const connected=room.players.filter(p=>p.connected);
+  if(connected.length===0){clearTimers(room);rooms.delete(code)}
+  else{if(room.hostId===sk.id)room.hostId=connected[0].id;bc(room)}
+}
+
 function scheduleZeitStop(room){
   if(room.mode!=="timesense"||!room.roundData.hiddenDuration)return;
   clearTimers(room);
@@ -117,8 +129,11 @@ function checkElimination(room){
 }
 
 io.on("connection",sk=>{
+  sk.on("leave",()=>{leaveCurrentRoom(sk)});
+
   sk.on("create",({name,avatar,mode,format,roundsPerPhase},cb)=>{
     if(!name)return cb({ok:false,err:"Name fehlt"});
+    leaveCurrentRoom(sk); // leave any old room first
     const code=mkCode();
     const room=makeRoom(code,sk,name,avatar,mode,format,roundsPerPhase);
     room.scores[sk.id]=0;room.phaseScores[sk.id]=0;
@@ -126,6 +141,7 @@ io.on("connection",sk=>{
   });
 
   sk.on("join",({code,name,avatar},cb)=>{
+    leaveCurrentRoom(sk); // leave any old room first
     const room=rooms.get(code&&code.toUpperCase());
     if(!room)return cb({ok:false,err:"Raum nicht gefunden"});
     if(room.phase!=="lobby")return cb({ok:false,err:"Spiel läuft"});
