@@ -181,9 +181,8 @@ io.on("connection",sk=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.phase!=="playing")return;
     const team=f.player.team;if(!team)return;
     const tgt=room.roundData.targetTime;const dev=Math.abs(teamTotal-tgt);
-    const devSec=parseFloat(dev.toFixed(1));
     room.players.filter(p=>p.team===team&&p.connected&&!p.eliminated).forEach(p=>{
-      if(!room.subs[p.id])room.subs[p.id]={pid:p.id,name:p.name,avatar:p.avatar,value:devSec};
+      if(!room.subs[p.id])room.subs[p.id]={pid:p.id,name:p.name,avatar:p.avatar,value:dev};
     });
     bc(room);
     const active=activePlayers(room);
@@ -223,6 +222,34 @@ io.on("connection",sk=>{
   sk.on("playAgain",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
     fullReset(room);room.phase="lobby";bc(room);
+  });
+
+  // Resume/reconnect: client requests fresh state
+  sk.on("requestSync",()=>{
+    const f=findRoom(sk.id);if(!f)return;
+    const s=roomState(f.room);
+    sk.emit("sync",{...s,myId:sk.id});
+  });
+
+  // Rejoin after socket reconnect (new socket ID)
+  sk.on("rejoin",({code,name},cb)=>{
+    if(!code||!name)return cb&&cb({ok:false,err:"Missing data"});
+    const room=rooms.get(code.toUpperCase());
+    if(!room)return cb&&cb({ok:false,err:"Raum nicht gefunden"});
+    const player=room.players.find(p=>p.name===name&&!p.connected);
+    if(!player)return cb&&cb({ok:false,err:"Spieler nicht gefunden"});
+    // Remap old socket ID to new one
+    const oldId=player.id;
+    player.id=sk.id;player.connected=true;
+    sk.join(code.toUpperCase());
+    // Update scores/subs keys from old ID to new ID
+    if(room.scores[oldId]!==undefined){room.scores[sk.id]=room.scores[oldId];delete room.scores[oldId]}
+    if(room.phaseScores[oldId]!==undefined){room.phaseScores[sk.id]=room.phaseScores[oldId];delete room.phaseScores[oldId]}
+    if(room.subs[oldId]){room.subs[sk.id]=room.subs[oldId];room.subs[sk.id].pid=sk.id;delete room.subs[oldId]}
+    if(room.teamSubs[oldId]){room.teamSubs[sk.id]=room.teamSubs[oldId];room.teamSubs[sk.id].pid=sk.id;delete room.teamSubs[oldId]}
+    if(room.hostId===oldId)room.hostId=sk.id;
+    cb&&cb({ok:true,code:code.toUpperCase()});
+    bc(room);
   });
 
   sk.on("disconnect",()=>{const f=findRoom(sk.id);if(!f)return;const{code,room,player}=f;
