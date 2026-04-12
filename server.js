@@ -9,37 +9,54 @@ function mkCode(){let c;do{c="";for(let i=0;i<4;i++)c+=CH[Math.floor(Math.random
 function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 function rngF(a,b){return Math.random()*(b-a)+a}
 
-function genRoundData(mode){
+function genRoundData(mode,format,round){
   switch(mode){
-    case"bullseye":return{targetTime:parseFloat(rngF(1.5,8).toFixed(2))};
-    case"timesense":return{hiddenDuration:parseFloat(rngF(3,8).toFixed(2))};
-    case"memory":return{shownTime:parseFloat(rngF(1,6).toFixed(3)),showDuration:rng(200,400)};
-    case"reaction":return{};
+    case"bullseye":{
+      // FFA: short times (1.5-5s), Teams: longer (3-15s)
+      const lo=format==="teams"?3:1.5, hi=format==="teams"?15:5;
+      return{targetTime:parseFloat(rngF(lo,hi).toFixed(2))};
+    }
+    case"timesense":{
+      const dur=parseFloat(rngF(3,10).toFixed(2));
+      const waitDelay=parseFloat(rngF(2,5).toFixed(2)); // same delay for server+client
+      return{hiddenDuration:dur,waitDelay:waitDelay};
+    }
+    case"memory":{
+      // Mix easy (2 decimals) and hard (4 decimals) rounds
+      const hard=round%2===0||Math.random()>.5;
+      const decimals=hard?4:2;
+      const val=parseFloat(rngF(1,9).toFixed(decimals));
+      // Display time: max 300ms
+      return{shownTime:val,showDuration:rng(180,300),decimals:decimals};
+    }
+    case"reaction":{
+      // Random buzzer position offset for each round
+      const xOff=rng(-80,80),yOff=rng(-60,60);
+      return{xOff,yOff};
+    }
     default:return{};
   }
 }
 
 function roomState(room){
-  var subMap={};Object.keys(room.subs||{}).forEach(function(k){subMap[k]=true});
+  var subMap={};Object.keys(room.subs||{}).forEach(k=>{subMap[k]=true});
   return{code:room.code,phase:room.phase,mode:room.mode,format:room.format,
     totalRounds:room.totalRounds,currentRound:room.currentRound,
-    roundData:room.roundData,
+    roundData:room.roundData,preGameDone:room.preGameDone||false,
     players:room.players.map(p=>({id:p.id,name:p.name,avatar:p.avatar,team:p.team,connected:p.connected})),
     results:room.results,finalScores:room.finalScores,scores:room.scores,
     hostId:room.hostId,subs:subMap};
 }
-
 function bc(room){const s=roomState(room);room.players.forEach(p=>{io.to(p.id).emit("sync",{...s,myId:p.id})})}
+function findRoom(sid){for(const[c,r]of rooms){const p=r.players.find(x=>x.id===sid);if(p)return{code:c,room:r,player:p}}return null}
 
-function findRoom(sid){for(const[code,room]of rooms){const p=room.players.find(x=>x.id===sid);if(p)return{code,room,player:p}}return null}
-
-// Schedule zeitStop for timesense mode
 function scheduleZeitStop(room){
   if(room.mode!=="timesense"||!room.roundData.hiddenDuration)return;
   const dur=room.roundData.hiddenDuration;
+  const wait=room.roundData.waitDelay||3;
   const rnd=room.currentRound;
-  // Client: 2s wait + 3s countdown = 5s before counting starts
-  const totalDelay=(5+dur)*1000;
+  // Client: waitDelay seconds (red buzzer) + dur seconds (counting)
+  const totalDelay=(wait+dur)*1000;
   setTimeout(()=>{
     if(room.phase==="playing"&&room.currentRound===rnd){
       io.to(room.code).emit("zeitStop",{actual:dur});
@@ -52,7 +69,7 @@ io.on("connection",sk=>{
     if(!name)return cb({ok:false,err:"Name fehlt"});
     const code=mkCode();
     const room={code,phase:"lobby",mode:mode||"bullseye",format:format||"ffa",
-      totalRounds:rounds||5,currentRound:0,
+      totalRounds:rounds||5,currentRound:0,preGameDone:false,
       players:[{id:sk.id,name,avatar,team:null,connected:true}],
       hostId:sk.id,roundData:null,results:null,subs:{},scores:{},finalScores:null};
     room.scores[sk.id]=0;rooms.set(code,room);sk.join(code);
@@ -76,14 +93,23 @@ io.on("connection",sk=>{
     if(mode)room.mode=mode;if(format)room.format=format;if(rounds)room.totalRounds=rounds;bc(room);
   });
 
+  // Host starts → show pre-game screen first
   sk.on("start",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
     const connected=room.players.filter(p=>p.connected);if(connected.length<2)return;
-    if(room.format==="teams"){const shuffled=[...connected].sort(()=>Math.random()-.5);shuffled.forEach((p,i)=>{if(!p.team)p.team=i%2===0?"a":"b"})}
-    room.currentRound=1;room.roundData=genRoundData(room.mode);
-    room.subs={};room.results=null;room.finalScores=null;
+    if(room.format==="teams"){connected.forEach((p,i)=>{if(!p.team)p.team=i%2===0?"a":"b"})}
+    room.currentRound=0;room.subs={};room.results=null;room.finalScores=null;
     room.scores={};connected.forEach(p=>{room.scores[p.id]=0});
-    room.phase="playing";bc(room);scheduleZeitStop(room);
+    room.preGameDone=false;room.phase="pregame";bc(room);
+  });
+
+  // Host confirms pre-game → start round 1
+  sk.on("startFirstRound",()=>{
+    const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
+    room.preGameDone=true;room.currentRound=1;
+    room.roundData=genRoundData(room.mode,room.format,1);
+    room.subs={};room.phase="playing";bc(room);
+    scheduleZeitStop(room);
   });
 
   sk.on("submit",({value,extra})=>{
@@ -102,11 +128,16 @@ io.on("connection",sk=>{
   sk.on("nextRound",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
     if(room.currentRound>=room.totalRounds){room.finalScores={...room.scores};room.phase="gameover";bc(room)}
-    else{room.currentRound++;room.roundData=genRoundData(room.mode);room.subs={};room.results=null;room.phase="playing";bc(room);scheduleZeitStop(room)}
+    else{room.currentRound++;room.roundData=genRoundData(room.mode,room.format,room.currentRound);room.subs={};room.results=null;room.phase="playing";bc(room);scheduleZeitStop(room)}
+  });
+
+  sk.on("endGame",()=>{
+    const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
+    room.finalScores={...room.scores};room.phase="gameover";bc(room);
   });
 
   sk.on("playAgain",()=>{const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
-    room.phase="lobby";room.currentRound=0;room.results=null;room.finalScores=null;room.subs={};
+    room.phase="lobby";room.currentRound=0;room.results=null;room.finalScores=null;room.subs={};room.preGameDone=false;
     room.scores={};room.players.forEach(p=>{room.scores[p.id]=0});bc(room)});
 
   sk.on("disconnect",()=>{const f=findRoom(sk.id);if(!f)return;const{code,room,player}=f;
