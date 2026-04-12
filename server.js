@@ -27,8 +27,9 @@ function genRoundData(mode,format,round){
       return{hiddenDuration:dur,waitDelay};
     }
     case"memory":{
-      const val=genTarget();
-      return{shownTime:val,showDuration:rng(200,350)};
+      const decimals=Math.random()>.5?4:3;
+      const val=parseFloat((0.5+Math.random()*4.5).toFixed(decimals));
+      return{shownTime:val,showDuration:rng(200,350),decimals};
     }
     case"reaction":{
       const greenIdx=rng(0,9); // which of 10 buzzers turns green
@@ -43,14 +44,12 @@ function makeRoom(code,sk,name,avatar,mode,format,roundsPerPhase){
     roundsPerPhase:roundsPerPhase||3,currentRound:0,currentPhaseRound:0,
     players:[{id:sk.id,name,avatar,team:null,connected:true,eliminated:false}],
     hostId:sk.id,roundData:null,results:null,subs:{},teamSubs:{},
-    scores:{},phaseScores:{},finalScores:null,zeitTimers:[],
-    readyPlayers:{}}
+    scores:{},phaseScores:{},finalScores:null,zeitTimers:[]}
 }
 
 function roomState(room){
   var subMap={};Object.keys(room.subs||{}).forEach(k=>{subMap[k]=true});
   var tSubMap={};Object.keys(room.teamSubs||{}).forEach(k=>{tSubMap[k]=true});
-  var readyMap={};Object.keys(room.readyPlayers||{}).forEach(k=>{readyMap[k]=true});
   return{code:room.code,phase:room.phase,mode:room.mode,format:room.format,
     roundsPerPhase:room.roundsPerPhase,currentRound:room.currentRound,
     currentPhaseRound:room.currentPhaseRound,
@@ -58,7 +57,7 @@ function roomState(room){
     players:room.players.map(p=>({id:p.id,name:p.name,avatar:p.avatar,team:p.team,connected:p.connected,eliminated:p.eliminated})),
     results:room.results,finalScores:room.finalScores,
     scores:room.scores,phaseScores:room.phaseScores,
-    hostId:room.hostId,subs:subMap,teamSubs:tSubMap,readyPlayers:readyMap};
+    hostId:room.hostId,subs:subMap,teamSubs:tSubMap};
 }
 function bc(room){const s=roomState(room);room.players.forEach(p=>{io.to(p.id).emit("sync",{...s,myId:p.id})})}
 function findRoom(sid){for(const[c,r]of rooms){const p=r.players.find(x=>x.id===sid);if(p)return{code:c,room:r,player:p}}return null}
@@ -89,7 +88,7 @@ function scheduleZeitStop(room){
 
 function fullReset(room){
   clearTimers(room);
-  room.currentRound=0;room.currentPhaseRound=0;room.subs={};room.teamSubs={};room.readyPlayers={};
+  room.currentRound=0;room.currentPhaseRound=0;room.subs={};room.teamSubs={};
   room.results=null;room.finalScores=null;room.roundData=null;
   room.scores={};room.phaseScores={};
   room.players.forEach(p=>{room.scores[p.id]=0;room.phaseScores[p.id]=0;p.eliminated=false});
@@ -98,7 +97,7 @@ function fullReset(room){
 function startRound(room){
   room.currentRound++;room.currentPhaseRound++;
   room.roundData=genRoundData(room.mode,room.format,room.currentRound);
-  room.subs={};room.teamSubs={};room.readyPlayers={};room.results=null;
+  room.subs={};room.teamSubs={};room.results=null;
   room.phase="playing";bc(room);
   scheduleZeitStop(room);
 }
@@ -168,17 +167,6 @@ io.on("connection",sk=>{
   sk.on("startFirstRound",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
     startRound(room);
-  });
-
-  // Memory: player ready
-  sk.on("playerReady",()=>{
-    const f=findRoom(sk.id);if(!f)return;const{room}=f;
-    room.readyPlayers[sk.id]=true;bc(room);
-    // If all active players ready, signal to show the number
-    const active=activePlayers(room);
-    if(active.every(p=>room.readyPlayers[p.id])){
-      io.to(room.code).emit("memoryShow");
-    }
   });
 
   sk.on("submit",({value})=>{
