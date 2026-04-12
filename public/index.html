@@ -97,23 +97,22 @@ function renderPreGame(){var ps=room.players.filter(function(p){return p.connect
 function renderSpin(){
   var mode=room.mode;var m=MI[mode];var isHost=room.hostId===room.myId;
   var active=room.players.filter(function(p){return!p.eliminated&&p.connected});
-  // Build SVG wheel
   var colors=["#E07A4A","#4A90D9","#4AAD7A","#D4A04A"];
   var icons=["🎯","🧠","💾","⚡"];
-  var names=["Bullseye","Zeitgefühl","Memory","Reaktion"];
   var modeIdx=SEGS.findIndex(function(s){return s.id===mode});
-  // Wheel spins and lands on the selected segment
-  // Target angle: center of the selected segment (each is 90°)
-  var targetAngle=360*4+(modeIdx*90)+45; // 4 full rotations + land on segment center
+
+  // FIX: Corrected angle formula so the pointer (▼ at top) lands on the correct segment.
+  // Each segment is 90°, drawn starting at -90° (top). Segment i has its centre at -90° + i*90°.
+  // To bring segment i's centre to the top (−90°) we need: rotation = 360*4 + (315 - modeIdx*90)
+  var targetAngle = 360*4 + (315 - modeIdx*90);
+
   var svg='<svg viewBox="0 0 240 240" width="220" height="220" style="display:block;margin:0 auto">';
-  // Draw segments
   for(var i=0;i<4;i++){
     var a1=i*90-90,a2=(i+1)*90-90;
     var r=110,cx=120,cy=120;
     var x1=cx+r*Math.cos(a1*Math.PI/180),y1=cy+r*Math.sin(a1*Math.PI/180);
     var x2=cx+r*Math.cos(a2*Math.PI/180),y2=cy+r*Math.sin(a2*Math.PI/180);
     svg+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 0,1 '+x2+','+y2+' Z" fill="'+colors[i]+'" opacity="0.85"/>';
-    // Icon position
     var midA=(a1+a2)/2;var ir=65;
     var ix=cx+ir*Math.cos(midA*Math.PI/180),iy=cy+ir*Math.sin(midA*Math.PI/180);
     svg+='<text x="'+ix+'" y="'+iy+'" text-anchor="middle" dominant-baseline="central" font-size="28">'+icons[i]+'</text>';
@@ -126,12 +125,10 @@ function renderSpin(){
   '<div style="position:relative;width:220px;margin:0 auto"><div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:20px;z-index:2">▼</div><div id="wheelWrap" style="transition:transform 3s cubic-bezier(.2,.8,.3,1)">'+svg+'</div></div>'+
   '<div id="spinResult" style="margin-top:20px;min-height:120px"></div></div>';
 
-  // Animate spin
   setTimeout(function(){
     var w=$("wheelWrap");if(w)w.style.transform="rotate("+targetAngle+"deg)";
     sfxTick();
   },100);
-  // After spin completes, show result
   setTimeout(function(){
     sfxGo();vb([60,30,60,30,100]);
     var sr=$("spinResult");if(!sr)return;
