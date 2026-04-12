@@ -155,10 +155,55 @@ var SEGS=[{id:"bullseye",color:"#F4B942"},{id:"timesense",color:"#3D8EF0"},{id:"
 function $(id){return document.getElementById(id)}
 function fullClientReset(){clearTimeout(window._tsWait);clearTimeout(window._rt);window._bs=null;window._rs=null;window._tbs=null;submitted=false;lastRound=0;lastPhase="";lastTeamSubCount=0}
 setTimeout(function(){var s=$("splash");if(s)s.style.display="none";home()},2600);
-so.on("connect",function(){myId=so.id});
+so.on("connect",function(){myId=so.id;
+  /* After reconnect: rejoin room if we were in one */
+  if(window._lastRoomCode&&myName){
+    so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r){
+      if(r&&r.ok){so.emit("requestSync")}else{window._lastRoomCode=null}
+    });
+  }
+});
 var lastPhase="",lastRound=0,submitted=false,lastTeamSubCount=0;
 
+/* ── VISIBILITY / RESUME HANDLING ── */
+var _bgTime=0;
+document.addEventListener("visibilitychange",function(){
+  if(document.hidden){
+    _bgTime=Date.now();
+  }else{
+    var away=Date.now()-_bgTime;
+    /* Resume audio context if suspended (iOS/Android) */
+    if(actx&&actx.state==="suspended")try{actx.resume()}catch(e){}
+    /* If socket disconnected, force reconnect */
+    if(!so.connected){so.connect()}
+    /* Always request fresh state from server */
+    if(room&&window._lastRoomCode){
+      lastPhase="";/* Reset to force re-render on next sync */
+      so.emit("requestSync");
+    }
+    /* If we were in a timed game phase and came back after significant time,
+       the client-side timers may have drifted or frozen. Request sync handles this
+       because the server is authoritative for game state transitions. */
+  }
+});
+/* Also handle page focus for desktop browsers */
+window.addEventListener("focus",function(){
+  if(room&&window._lastRoomCode&&so.connected){
+    lastPhase="";
+    so.emit("requestSync");
+  }
+});
+/* Track reconnection attempts */
+so.on("reconnect",function(){
+  if(window._lastRoomCode&&myName){
+    so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r){
+      if(r&&r.ok){lastPhase="";so.emit("requestSync")}else{window._lastRoomCode=null}
+    });
+  }
+});
+
 so.on("sync",function(data){room=data;
+  if(room.code)window._lastRoomCode=room.code;
   if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound}
   if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}
   var tsC=room.teamSubs?Object.keys(room.teamSubs).length:0;var tCh=room.roundData&&room.roundData.teamMode&&tsC!==lastTeamSubCount;if(tCh)lastTeamSubCount=tsC;
@@ -170,7 +215,7 @@ so.on("zeitStop",function(d){if(submitted||!room||room.phase!=="playing"||room.m
 function render(){if(!room)return;switch(room.phase){case"lobby":renderLobby();break;case"pregame":renderPreGame();break;case"spin":renderSpin();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"elimination":renderElimination();break;case"gameover":renderGameOver();break}}
 
 /* ══ HOME ══ */
-function home(){so.emit("leave");room=null;fullClientReset();
+function home(){so.emit("leave");room=null;window._lastRoomCode=null;fullClientReset();
 $("app").innerHTML=
 '<div style="animation:up .55s ease;padding-top:16px">'+
 '<div class="ct" style="margin-bottom:38px">'+
@@ -428,7 +473,7 @@ if(window._bs==="ready"){
 }else if(window._bs==="timing"){
   window._bs="done";
   var held=(performance.now()-window._bt)/1000;
-  var tgt=room.roundData.targetTime;var dev=Math.abs(held-tgt);var devS=parseFloat(dev.toFixed(1));
+  var tgt=room.roundData.targetTime;var dev=Math.abs(held-tgt);
   var b2=$("bBtn");
   if(b2){b2.textContent="✓";b2.style.background="radial-gradient(circle at 35% 30%,#061A0E,#020B06)";b2.style.borderColor="#28D970";b2.style.color="#28D970";b2.style.animation="none";b2.style.boxShadow="0 0 28px rgba(40,217,112,.4)"}
   if(dev<.15){sfxGood();vb([40,20,40])}else{sfxBad();vb(60)}
@@ -436,10 +481,10 @@ if(window._bs==="ready"){
   var rt=dev<.1?"PERFEKT!":dev<.3?"GUT!":"DANEBEN!";
   var w=$("bW");
   if(w)w.innerHTML+='<div style="animation:pop .35s ease;margin-top:24px">'+
-  '<div class="dsp" style="font-size:34px">'+held.toFixed(1)+'s</div>'+
+  '<div class="dsp" style="font-size:34px">'+held.toFixed(3)+'s</div>'+
   '<div style="font-size:16px;font-weight:700;margin-top:8px;color:'+rc+';letter-spacing:2px">'+rt+'</div>'+
-  '<div style="font-size:13px;color:#6A6A9E;margin-top:5px;font-weight:600">'+devS+'s Abweichung</div></div>';
-  doSubmit(devS);
+  '<div style="font-size:13px;color:#6A6A9E;margin-top:5px;font-weight:600">'+dev.toFixed(3)+'s Abweichung</div></div>';
+  doSubmit(dev);
 }}
 
 /* ══ TEAM BULLSEYE ══ */
@@ -473,7 +518,7 @@ if(window._tbs==="ready"){window._tbs="timing";window._tbt=performance.now();sfx
   var b=$("tbBtn");if(b){b.textContent="STOPP";b.style.background="radial-gradient(circle at 35% 30%,#2A0610,#12020A)";b.style.borderColor="#FF2952";b.style.color="#FF2952";b.style.animation="redPulse 0.5s ease infinite"}}
 else if(window._tbs==="timing"){window._tbs="done";var h=(performance.now()-window._tbt)/1000;
   var b2=$("tbBtn");if(b2){b2.textContent="✓";b2.style.background="radial-gradient(circle at 35% 30%,#061A0E,#020B06)";b2.style.borderColor="#28D970";b2.style.color="#28D970";b2.style.animation="none"}
-  sfxGood();var t=$("tbT");if(t)t.textContent=h.toFixed(1)+"s";so.emit("teamSubmit",{value:h})}}
+  sfxGood();var t=$("tbT");if(t)t.textContent=h.toFixed(3)+"s";so.emit("teamSubmit",{value:h})}}
 
 function tConf(){var el=$("tcI");if(!el)return;var v=parseFloat(el.value);if(isNaN(v)||v<=0)return;sfxTick();so.emit("teamConfirm",{teamTotal:v})}
 
@@ -514,17 +559,17 @@ el.innerHTML=
 setTimeout(function(){var i=$("tI");if(i)i.focus()},100)}
 
 function zeitSub(){var el=$("tI");if(!el)return;var g=parseFloat(el.value);if(isNaN(g)||g<=0)return;
-var actual=window._zeitActual||0;var dev=Math.abs(g-actual);var devS=parseFloat(dev.toFixed(1));
+var actual=window._zeitActual||0;var dev=Math.abs(g-actual);
 if(dev<.3){sfxGood();vb([40,20,40])}else{sfxBad();vb(60)}
 var rc=dev<.3?"#28D970":dev<1?"#F4B942":"#FF2952";
 var rt=dev<.3?"STARK!":dev<1?"KNAPP!":"DANEBEN!";
 ($("tC")||$("app")).innerHTML=
 '<div class="ct" style="padding:20px;animation:pop .35s ease">'+
-'<div style="font-size:13px;color:#6A6A9E;margin-bottom:5px;font-weight:600">Tipp: <span class="dsp" style="font-size:15px">'+g.toFixed(1)+'s</span></div>'+
-'<div style="font-size:13px;color:#6A6A9E;margin-bottom:16px;font-weight:600">Tatsächlich: <span style="font-family:\'Share Tech Mono\',monospace;color:#F4B942;font-size:15px">'+actual.toFixed(1)+'s</span></div>'+
+'<div style="font-size:13px;color:#6A6A9E;margin-bottom:5px;font-weight:600">Tipp: <span class="dsp" style="font-size:15px">'+g.toFixed(3)+'s</span></div>'+
+'<div style="font-size:13px;color:#6A6A9E;margin-bottom:16px;font-weight:600">Tatsächlich: <span style="font-family:\'Share Tech Mono\',monospace;color:#F4B942;font-size:15px">'+actual.toFixed(3)+'s</span></div>'+
 '<div style="font-size:20px;font-weight:700;color:'+rc+';letter-spacing:2px">'+rt+'</div>'+
-'<div style="font-size:13px;color:#6A6A9E;margin-top:6px;font-weight:600">'+devS+'s Abweichung</div></div>';
-doSubmit(devS)}
+'<div style="font-size:13px;color:#6A6A9E;margin-top:6px;font-weight:600">'+dev.toFixed(3)+'s Abweichung</div></div>';
+doSubmit(dev)}
 
 /* ══ MEMORY ══ */
 function renderMemory(hdr){
@@ -556,7 +601,7 @@ setTimeout(function(){
 },dur)}
 
 function memSub(){var el=$("mI");if(!el)return;var g=parseFloat(el.value);if(isNaN(g))return;
-var shown=room.roundData.shownTime;var dec=room.roundData.decimals||3;var dev=Math.abs(g-shown);var devS=parseFloat(dev.toFixed(1));
+var shown=room.roundData.shownTime;var dec=room.roundData.decimals||3;var dev=Math.abs(g-shown);
 if(dev<.05){sfxGood();vb([40,20,40])}else{sfxBad();vb(60)}
 var rc=dev<.05?"#28D970":dev<.3?"#F4B942":"#FF2952";
 var mc=$("mC");
@@ -564,8 +609,8 @@ if(mc)mc.innerHTML=
 '<div style="animation:pop .35s ease">'+
 '<div style="font-size:13px;color:#6A6A9E;margin-bottom:5px;font-weight:600">Tipp: <span class="dsp" style="font-size:15px">'+g.toFixed(dec)+'s</span></div>'+
 '<div style="font-size:13px;color:#6A6A9E;margin-bottom:14px;font-weight:600">Richtig: <span style="font-family:\'Share Tech Mono\',monospace;color:#F4B942;font-size:15px">'+shown.toFixed(dec)+'s</span></div>'+
-'<div style="font-size:20px;font-weight:700;color:'+rc+';letter-spacing:2px">'+devS+'s Abweichung</div></div>';
-doSubmit(devS)}
+'<div style="font-size:20px;font-weight:700;color:'+rc+';letter-spacing:2px">'+dev.toFixed(dec)+'s Abweichung</div></div>';
+doSubmit(dev)}
 
 /* ══ REACTION ══ */
 function renderReaction(hdr){var gIdx=room.roundData.greenIdx;
@@ -608,13 +653,13 @@ if(window._rs==="ready"){
 }else if(window._rs==="go"){
   window._rs="done";
   if(idx!==window._rGreen){sfxBad();vb(80);var s2=$("rzSub");if(s2)s2.innerHTML='<div style="color:#FF2952;font-weight:700;letter-spacing:1px">Falscher Buzzer! 5s</div>';doSubmit(5);return}
-  var rt=(performance.now()-window._r0)/1000;var rtS=parseFloat(rt.toFixed(1));
+  var rt=(performance.now()-window._r0)/1000;
   if(rt<.25){sfxGood();vb([40,20,40])}else{sfxBad();vb(60)}
   var b2=$("rz"+idx);if(b2){b2.style.background="radial-gradient(circle at 35% 30%,#252548,#0D0D1E)";b2.style.borderColor="#F4B942";b2.style.color="#F4B942";b2.style.animation="none";b2.style.boxShadow="0 0 22px rgba(244,185,66,.5)";b2.style.transform="scale(1)"}
   var rc=rt<.2?"#28D970":rt<.35?"#F4B942":"#FF2952";
   var rt2=rt<.2?"BLITZ!":rt<.35?"SCHNELL!":"LANGSAM!";
-  var s3=$("rzSub");if(s3)s3.innerHTML='<div class="dsp" style="font-size:34px;margin-bottom:6px">'+rt.toFixed(2)+'s</div><div style="font-size:13px;font-weight:700;color:'+rc+';letter-spacing:2px">'+rt2+'</div>';
-  doSubmit(rtS);
+  var s3=$("rzSub");if(s3)s3.innerHTML='<div class="dsp" style="font-size:34px;margin-bottom:6px">'+rt.toFixed(3)+'s</div><div style="font-size:13px;font-weight:700;color:'+rc+';letter-spacing:2px">'+rt2+'</div>';
+  doSubmit(rt);
 }}
 
 /* ══ RESULTS ══ */
@@ -635,7 +680,7 @@ res.forEach(function(r,i){
   html+='<div style="display:flex;align-items:center;gap:11px"><span style="font-size:'+(i<3?'19':'13')+'px;width:26px;text-align:center">'+medal+'</span>';
   html+='<div style="width:40px;height:40px;border-radius:50%;background:#161630;border:2px solid '+(isMe?"#F4B942":"#22224A")+';display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:'+(isMe?"0 0 16px rgba(244,185,66,.4)":"none")+'">'+r.avatar+'</div>';
   html+='<span style="font-size:14px;font-weight:700;color:'+(isMe?"#F4B942":"#EEECff")+';letter-spacing:.5px">'+r.name+'</span></div>';
-  html+='<div class="dsp" style="font-size:15px;color:'+(i===0?"#00E5CC":"#6A6A9E")+'">'+r.value.toFixed(1)+'s</div></div>';
+  html+='<div class="dsp" style="font-size:15px;color:'+(i===0?"#00E5CC":"#6A6A9E")+'">'+r.value.toFixed(3)+'s</div></div>';
 });
 html+='</div>';
 if(isHost){html+='<div class="ct" style="display:flex;flex-direction:column;align-items:center;gap:12px"><button class="btn" onclick="so.emit(\'nextRound\')">Weiter ▶</button><button class="btn2" style="font-size:11px;letter-spacing:1px" onclick="so.emit(\'endGame\')">BEENDEN</button></div>';}
