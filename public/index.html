@@ -5,83 +5,117 @@
 body{font-family:-apple-system,'SF Pro Display','Segoe UI',system-ui,sans-serif;background:#0B0B1E;color:#F1F0FF;min-height:100dvh;overflow-x:hidden}
 #app{max-width:440px;margin:0 auto;padding:14px 16px 40px}
 button{font-family:inherit;cursor:pointer;border:none;outline:none}input{font-family:inherit;outline:none}
-.btn{border-radius:14px;padding:16px 36px;color:#fff;font-size:15px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(135deg,#8B5CF6,#EC4899);border:none;box-shadow:0 0 10px #8B5CF630;transition:transform .12s;width:100%;max-width:300px}
+.btn{border-radius:14px;padding:16px 36px;color:#fff;font-size:15px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(135deg,#8B5CF6,#EC4899);border:none;box-shadow:0 0 10px #8B5CF630;transition:transform .12s;width:100%;max-width:320px}
 .btn:active{transform:scale(.94)}.btn:disabled{opacity:.3}
 .btn-cyan{background:linear-gradient(135deg,#06B6D4,#38BDF8)}
 .btn-green{background:linear-gradient(135deg,#10B981,#06B6D4)}
 .btn-gold{background:linear-gradient(135deg,#F59E0B,#F97316)}
 .btn-gray{background:#1C1C42;border:1px solid #2D2D5E}
-.btn-red{background:linear-gradient(135deg,#F43F5E,#EC4899)}
 .btn2{border-radius:10px;padding:10px 18px;color:#fff;font-size:13px;font-weight:600;background:#1C1C42;border:1px solid #2D2D5E}
 .inp{font-size:16px;color:#F1F0FF;background:#141432;border:2px solid #2D2D5E;border-radius:14px;padding:14px 18px;text-align:center;width:100%;font-weight:700}
 .inp:focus{border-color:#8B5CF6}
 .cd{border-radius:16px;background:#141432;border:1px solid #2D2D5E;padding:16px}
 .ct{text-align:center}
-.gt{background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .lb{font-size:10px;color:#5D5B7A;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.mc{width:100%;padding:18px 20px;margin-bottom:12px;display:flex;align-items:center;gap:16px;text-align:left;border-radius:18px;border:none;color:#fff;transition:transform .15s;box-shadow:0 0 16px rgba(0,0,0,.2)}
+.mc:active{transform:scale(.97)}
 @keyframes pop{0%{transform:scale(.3);opacity:0}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
 @keyframes up{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
-@keyframes sL{from{transform:translateX(-14px);opacity:0}to{transform:translateX(0);opacity:1}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 @keyframes pulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.06);opacity:1}}
 @keyframes breathe{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.12);opacity:.75}}
 @keyframes ripple{0%{transform:scale(.8);opacity:.5}100%{transform:scale(2);opacity:0}}
-@keyframes shrink{0%{width:100%}100%{width:0%}}
-@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.3}}
 @keyframes slideIn{0%{transform:translateY(20px);opacity:0}100%{transform:translateY(0);opacity:1}}
 @keyframes rainbow{0%{color:#8B5CF6}25%{color:#06B6D4}50%{color:#10B981}75%{color:#F59E0B}100%{color:#8B5CF6}}
-</style></head><body><div id="app"></div>
+@keyframes splashPulse{0%,100%{transform:scale(1);text-shadow:0 0 30px #8B5CF6}50%{transform:scale(1.04);text-shadow:0 0 60px #EC4899}}
+@keyframes splashFade{0%{opacity:1}80%{opacity:1}100%{opacity:0;pointer-events:none}}
+@keyframes buzzerPulse{0%,100%{box-shadow:0 0 30px #F43F5E44}50%{box-shadow:0 0 60px #F43F5E88}}
+</style></head><body>
+<div id="splash" style="position:fixed;inset:0;background:#0B0B1E;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:splashFade 2.8s ease forwards">
+<div style="font-size:48px;font-weight:900;animation:splashPulse 1.5s ease infinite;background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">TimeTap</div>
+<div style="font-size:12px;color:#5D5B7A;margin-top:12px;letter-spacing:4px">PARTY GAME</div>
+<div style="margin-top:30px;width:40px;height:40px;border:3px solid #2D2D5E;border-top-color:#8B5CF6;border-radius:50%;animation:spin 1s linear infinite"></div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</div>
+<div id="app"></div>
 <script>
 var so=io(location.origin,{reconnection:true,reconnectionAttempts:30});
 var myId=null,room=null,myName="",myAvatar="😎";
+var selMode="",selFormat="ffa",selRounds=5;
 var AV=["😎","🔥","⚡","🎯","💀","👾","🤖","🎮","🦊","🐸","🌟","💎","🎪","🎭","🃏","🧨","🍕","🎸","🚀","🌈"];
-var MODES=[{id:"bullseye",name:"Bullseye",desc:"Drück & Halte. Triff die Zeit.",icon:"🎯",color:"#EC4899",bg:"linear-gradient(135deg,#EC4899,#8B5CF6)"},
-{id:"timesense",name:"Zeitgefühl",desc:"Zähl im Kopf. Schätz die Zeit.",icon:"🧠",color:"#06B6D4",bg:"linear-gradient(135deg,#06B6D4,#38BDF8)"},
-{id:"memory",name:"Memory",desc:"Merk dir die Millisekunden!",icon:"💾",color:"#10B981",bg:"linear-gradient(135deg,#10B981,#06B6D4)"},
-{id:"reaction",name:"Reaktion",desc:"Warte auf Grün. Drück sofort!",icon:"⚡",color:"#F59E0B",bg:"linear-gradient(135deg,#F59E0B,#F97316)"}];
+var MODES=[
+{id:"bullseye",name:"Bullseye",desc:"Triff die Zielzeit. Reines Zeitgefühl.",icon:"🎯",color:"#EC4899",bg:"linear-gradient(135deg,#EC4899,#8B5CF6)"},
+{id:"timesense",name:"Zeitgefühl",desc:"Die App stoppt. Du schätzt.",icon:"🧠",color:"#06B6D4",bg:"linear-gradient(135deg,#06B6D4,#38BDF8)"},
+{id:"memory",name:"Memory",desc:"Merk dir die Zahl. Blitzschnell.",icon:"💾",color:"#10B981",bg:"linear-gradient(135deg,#10B981,#06B6D4)"},
+{id:"reaction",name:"Reaktion",desc:"Warte auf Grün. Drück den Buzzer.",icon:"⚡",color:"#F59E0B",bg:"linear-gradient(135deg,#F59E0B,#F97316)"}];
 var TC={a:"#EC4899",b:"#06B6D4"};
 function $(id){return document.getElementById(id)}
+setTimeout(function(){var s=$("splash");if(s)s.style.display="none";home()},2800);
 
 so.on("connect",function(){myId=so.id});
-var lastPhase="",lastRound=0;
-so.on("sync",function(data){
-  room=data;
-  // Reset submitted when new round starts
+var lastPhase="",lastRound=0,submitted=false;
+so.on("sync",function(data){room=data;
   if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound}
-  // Don't re-render playing if already playing and not submitted (prevents resetting mid-game)
-  if(room.phase==="playing"&&lastPhase==="playing"&&!submitted){return}
-  // Update waiting screen if someone submitted
+  if(room.phase==="playing"&&lastPhase==="playing"&&!submitted)return;
   if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}
-  lastPhase=room.phase;
-  render();
-});
+  lastPhase=room.phase;render()});
+so.on("zeitStop",function(d){window._zeitActual=d.actual;renderZeitInput()});
 
 function render(){if(!room)return;
   switch(room.phase){case"lobby":renderLobby();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"gameover":renderGameOver();break}}
 
-// ═══ HOME ═══
+// ═══ HOME (Game First) ═══
 function home(){room=null;
-  $("app").innerHTML='<div class="ct" style="animation:up .5s ease;padding-top:40px">'+
-  '<div style="font-size:11px;color:#8B5CF660;letter-spacing:6px;margin-bottom:10px">▶ PARTY GAME ◀</div>'+
-  '<div style="font-size:42px;font-weight:900;margin-bottom:6px;animation:rainbow 4s linear infinite">TimeTap</div>'+
-  '<div style="font-size:12px;color:#5D5B7A;margin-bottom:50px">Wer hat das beste Zeitgefühl?</div>'+
-  '<div style="margin-bottom:20px"><div class="lb">Dein Name</div><input id="nm" class="inp" placeholder="Name eingeben" maxlength="12"></div>'+
-  '<div style="margin-bottom:30px"><div class="lb">Avatar wählen</div><div id="avs" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px"></div></div>'+
-  '<div id="err" style="font-size:12px;color:#F43F5E;margin-bottom:16px"></div>'+
-  '<button class="btn" style="margin-bottom:16px" onclick="doCreate()">Raum erstellen</button><br>'+
-  '<div style="font-size:12px;color:#5D5B7A;margin:16px 0 12px">— oder —</div>'+
-  '<input id="ji" class="inp" placeholder="CODE" maxlength="4" style="letter-spacing:8px;font-size:22px;font-weight:900;font-family:monospace;margin-bottom:12px" oninput="this.value=this.value.toUpperCase()">'+
-  '<button class="btn btn-cyan" onclick="doJoin()">Beitreten</button></div>';
+  $("app").innerHTML='<div class="ct" style="animation:up .5s ease;padding-top:30px">'+
+  '<div style="font-size:36px;font-weight:900;margin-bottom:4px;background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">TimeTap</div>'+
+  '<div style="font-size:12px;color:#5D5B7A;margin-bottom:36px">Wähle ein Spiel</div>'+
+  MODES.map(function(m){return'<button class="mc" style="background:'+m.bg+'" onclick="pickGame(\''+m.id+'\')"><span style="font-size:32px">'+m.icon+'</span><div><div style="font-size:18px;font-weight:900">'+m.name+'</div><div style="font-size:11px;opacity:.8;margin-top:2px">'+m.desc+'</div></div></button>'}).join("")+
+  '</div>'}
+
+// ═══ STEP 2: FORMAT ═══
+function pickGame(mode){selMode=mode;
+  var m=MODES.find(function(x){return x.id===mode});
+  $("app").innerHTML='<div style="animation:up .4s ease"><button class="btn2" onclick="home()">← Zurück</button>'+
+  '<div class="ct" style="margin:20px 0"><div style="font-size:32px">'+m.icon+'</div><div style="font-size:22px;font-weight:900;color:'+m.color+';margin-top:8px">'+m.name+'</div></div>'+
+  '<div class="lb" style="margin-top:20px">Format</div>'+
+  '<button class="mc" style="background:linear-gradient(135deg,#F59E0B,#F97316)" onclick="selFormat=\'ffa\';pickRounds()"><span style="font-size:28px">⚔️</span><div><div style="font-size:16px;font-weight:800">Jeder gegen Jeden</div><div style="font-size:11px;opacity:.8">Bester gewinnt</div></div></button>'+
+  '<button class="mc" style="background:linear-gradient(135deg,#9D00FF,#EC4899)" onclick="selFormat=\'teams\';pickRounds()"><span style="font-size:28px">🤝</span><div><div style="font-size:16px;font-weight:800">Team vs Team</div><div style="font-size:11px;opacity:.8">Wähle dein Team</div></div></button></div>'}
+
+// ═══ STEP 3: ROUNDS ═══
+function pickRounds(){
+  $("app").innerHTML='<div style="animation:up .4s ease"><button class="btn2" onclick="pickGame(\''+selMode+'\')">← Zurück</button>'+
+  '<div class="ct" style="margin:24px 0"><div style="font-size:20px;font-weight:900;color:#F1F0FF">Wie viele Runden?</div></div>'+
+  '<div style="display:flex;gap:12px;justify-content:center;margin-bottom:30px">'+
+  [3,5,7,10].map(function(r){return'<button onclick="selRounds='+r+';setupRoom()" style="width:68px;height:68px;border-radius:16px;background:'+(selRounds===r?"linear-gradient(135deg,#8B5CF6,#EC4899)":"#141432")+';border:'+(selRounds===r?"none":"1px solid #2D2D5E")+';color:#fff;font-size:24px;font-weight:900;box-shadow:'+(selRounds===r?"0 0 16px #8B5CF630":"none")+'">'+r+'</button>'}).join("")+'</div></div>'}
+
+// ═══ STEP 4: ROOM (Name + Avatar + Create/Join) ═══
+function setupRoom(){
+  $("app").innerHTML='<div style="animation:up .4s ease"><button class="btn2" onclick="pickRounds()">← Zurück</button>'+
+  '<div class="ct" style="margin:16px 0"><div style="font-size:18px;font-weight:900;color:#F1F0FF">Spieler-Info</div></div>'+
+  '<div class="cd" style="margin-bottom:16px"><div class="lb">Dein Name</div><input id="nm" class="inp" placeholder="Name eingeben" maxlength="12" value="'+myName+'">'+
+  '<div class="lb" style="margin-top:16px">Avatar</div><div id="avs" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:8px"></div></div>'+
+  '<div id="err" style="font-size:12px;color:#F43F5E;margin-bottom:12px;text-align:center"></div>'+
+  '<div style="display:flex;gap:14px;justify-content:center;margin-bottom:20px">'+
+  '<div class="ct"><button onclick="doCreate()" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#8B5CF6,#EC4899);font-size:28px;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px #8B5CF630;border:none">+</button><div style="font-size:11px;color:#A5A3C8;margin-top:6px;font-weight:600">Erstellen</div></div>'+
+  '<div class="ct"><button onclick="joinScreen()" style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#06B6D4,#38BDF8);font-size:28px;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px #06B6D430;border:none">→</button><div style="font-size:11px;color:#A5A3C8;margin-top:6px;font-weight:600">Beitreten</div></div></div></div>';
   renderAvatars()}
 
-function renderAvatars(){var g=$("avs");if(!g)return;g.innerHTML=AV.map(function(a){return'<div onclick="myAvatar=\''+a+'\';renderAvatars()" style="width:42px;height:42px;font-size:22px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:'+(myAvatar===a?"2px solid #8B5CF6":"1px solid #2D2D5E")+';background:'+(myAvatar===a?"#8B5CF620":"#141432")+';cursor:pointer">'+a+'</div>'}).join("")}
+function renderAvatars(){var g=$("avs");if(!g)return;g.innerHTML=AV.map(function(a){return'<div onclick="myAvatar=\''+a+'\';renderAvatars()" style="width:42px;height:42px;font-size:22px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:'+(myAvatar===a?"2px solid #8B5CF6":"1px solid #2D2D5E")+';background:'+(myAvatar===a?"#8B5CF620":"#0d0d20")+';cursor:pointer">'+a+'</div>'}).join("")}
 
 function doCreate(){var n=$("nm");if(!n||!n.value.trim()){$("err").textContent="Name eingeben!";return}
-  myName=n.value.trim();so.emit("create",{name:myName,avatar:myAvatar},function(r){if(!r.ok)$("err").textContent=r.err})}
-function doJoin(){var n=$("nm"),c=$("ji");if(!n||!n.value.trim()){$("err").textContent="Name eingeben!";return}
-  if(!c||c.value.length<4){$("err").textContent="4-stelliger Code!";return}
-  myName=n.value.trim();so.emit("join",{code:c.value,name:myName,avatar:myAvatar},function(r){if(!r.ok)$("err").textContent=r.err})}
+  myName=n.value.trim();so.emit("create",{name:myName,avatar:myAvatar,mode:selMode,format:selFormat,rounds:selRounds},function(r){if(!r.ok)$("err").textContent=r.err})}
+
+function joinScreen(){var n=$("nm");if(!n||!n.value.trim()){$("err").textContent="Name eingeben!";return}
+  myName=n.value.trim();
+  $("app").innerHTML='<div class="ct" style="animation:up .4s ease;padding-top:30px"><div style="font-size:36px;margin-bottom:12px">🔑</div><div style="font-size:18px;font-weight:800;margin-bottom:16px">Raum beitreten</div>'+
+  '<input id="ji" class="inp" placeholder="CODE" maxlength="4" style="letter-spacing:8px;font-size:24px;font-weight:900;font-family:monospace;margin-bottom:12px;max-width:260px" oninput="this.value=this.value.toUpperCase()">'+
+  '<div id="jerr" style="font-size:12px;color:#F43F5E;margin-bottom:12px"></div>'+
+  '<button class="btn btn-cyan" onclick="doJoin()">Beitreten</button><br>'+
+  '<button class="btn2" style="margin-top:16px" onclick="setupRoom()">← Zurück</button></div>'}
+
+function doJoin(){var c=$("ji");if(!c||c.value.length<4){$("jerr").textContent="4-stelliger Code!";return}
+  so.emit("join",{code:c.value,name:myName,avatar:myAvatar},function(r){if(!r.ok){$("jerr").textContent=r.err}})}
 
 // ═══ LOBBY ═══
 function renderLobby(){
@@ -89,40 +123,29 @@ function renderLobby(){
   var html='<div style="animation:up .4s ease"><div class="ct" style="margin-bottom:20px">'+
   '<button onclick="try{navigator.clipboard.writeText(\''+room.code+'\')}catch(e){}" style="display:inline-block;padding:14px 28px;border-radius:16px;background:#141432;border:1px solid #2D2D5E;cursor:pointer"><div class="lb">Raum-Code</div><div style="font-size:32px;font-weight:900;color:#F59E0B;font-family:monospace;letter-spacing:8px">'+room.code+'</div><div style="font-size:10px;color:#8B5CF6;margin-top:4px">📋 Kopieren</div></button></div>';
 
-  // Players
-  html+='<div class="cd" style="margin-bottom:16px;text-align:left"><div class="lb">Spieler ('+ps.length+')</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">';
+  html+='<div class="cd" style="margin-bottom:16px;text-align:left"><div class="lb">'+m.icon+' '+m.name+' · '+(room.format==="ffa"?"Jeder vs Jeden":"Team vs Team")+' · '+room.totalRounds+' Runden</div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">';
   ps.forEach(function(p){var tc=p.team?TC[p.team]:"#2D2D5E";
     html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:12px;border:2px solid '+tc+';background:#0d0d20;opacity:'+(p.connected?'1':'.4')+'"><span style="font-size:22px">'+p.avatar+'</span><span style="font-size:13px;font-weight:700">'+p.name+(p.id===room.myId?' <span style="font-size:9px;color:#8B5CF6;background:#8B5CF620;padding:2px 6px;border-radius:4px">DU</span>':'')+'</span></div>'});
   html+='</div></div>';
 
+  // Team selection (if teams mode)
+  if(room.format==="teams"){
+    var myP=ps.find(function(p){return p.id===room.myId});var myTeam=myP?myP.team:null;
+    html+='<div class="cd" style="margin-bottom:16px"><div class="lb" style="color:#EC4899">Dein Team wählen</div><div style="display:flex;gap:10px;margin-top:8px">'+
+    '<button onclick="so.emit(\'setTeam\',{team:\'a\'})" style="flex:1;padding:14px;border-radius:12px;border:'+(myTeam==="a"?"3px solid #EC4899":"1px solid #2D2D5E")+';background:'+(myTeam==="a"?"#EC489920":"#0d0d20")+';color:'+(myTeam==="a"?"#EC4899":"#5D5B7A")+';font-size:14px;font-weight:800">Team Pink 🩷</button>'+
+    '<button onclick="so.emit(\'setTeam\',{team:\'b\'})" style="flex:1;padding:14px;border-radius:12px;border:'+(myTeam==="b"?"3px solid #06B6D4":"1px solid #2D2D5E")+';background:'+(myTeam==="b"?"#06B6D420":"#0d0d20")+';color:'+(myTeam==="b"?"#06B6D4":"#5D5B7A")+';font-size:14px;font-weight:800">Team Cyan 💎</button></div></div>';
+  }
+
   if(isHost){
-    // Mode
-    html+='<div class="cd" style="margin-bottom:14px"><div class="lb" style="color:#EC4899">Spielmodus</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">';
-    MODES.forEach(function(md){var sel=room.mode===md.id;
-      html+='<div onclick="so.emit(\'updateSettings\',{mode:\''+md.id+'\'})" style="padding:14px 10px;cursor:pointer;text-align:center;border-radius:14px;border:'+(sel?"2px solid "+md.color:"1px solid #2D2D5E")+';background:'+(sel?md.color+"15":"#0d0d20")+';transition:all .15s"><div style="font-size:26px">'+md.icon+'</div><div style="font-size:12px;font-weight:800;color:'+(sel?md.color:"#888")+';margin-top:6px">'+md.name+'</div><div style="font-size:10px;color:#5D5B7A;margin-top:4px">'+md.desc+'</div></div>'});
-    html+='</div></div>';
-
-    // Format
-    html+='<div class="cd" style="margin-bottom:14px"><div class="lb" style="color:#06B6D4">Format</div><div style="display:flex;gap:8px;margin-top:8px">';
-    [{id:"ffa",label:"Alle vs Alle",c:"#F59E0B"},{id:"teams",label:"Team vs Team",c:"#9D00FF"}].forEach(function(f){var sel=room.format===f.id;
-      html+='<div onclick="so.emit(\'updateSettings\',{format:\''+f.id+'\'})" style="flex:1;padding:14px;cursor:pointer;text-align:center;border-radius:12px;border:'+(sel?"2px solid "+f.c:"1px solid #2D2D5E")+';background:'+(sel?f.c+"15":"#0d0d20")+';font-size:13px;font-weight:700;color:'+(sel?f.c:"#5D5B7A")+'">'+f.label+'</div>'});
-    html+='</div></div>';
-
-    // Rounds
-    html+='<div class="cd" style="margin-bottom:20px"><div class="lb" style="color:#10B981">Runden</div><div style="display:flex;gap:8px;margin-top:8px">';
-    [3,5,7,10].forEach(function(r){var sel=room.totalRounds===r;
-      html+='<div onclick="so.emit(\'updateSettings\',{rounds:'+r+'})" style="flex:1;padding:12px;cursor:pointer;text-align:center;border-radius:12px;border:'+(sel?"2px solid #10B981":"1px solid #2D2D5E")+';background:'+(sel?"#10B98115":"#0d0d20")+';font-size:18px;font-weight:900;color:'+(sel?"#10B981":"#5D5B7A")+'">'+r+'</div>'});
-    html+='</div></div>';
-
     html+='<div class="ct"><button class="btn btn-green" onclick="so.emit(\'start\')"'+(ps.filter(function(p){return p.connected}).length>=2?'':' disabled')+'>🎮 Spiel starten</button></div>';
   } else {
-    html+='<div class="ct" style="margin-top:30px;animation:pulse 2s ease infinite"><div style="font-size:50px;margin-bottom:16px">⏳</div><div style="font-size:13px;color:#A5A3C8">Warte auf den Host...</div></div>';
+    html+='<div class="ct" style="margin-top:20px"><div style="font-size:50px;animation:float 2s ease infinite">⏳</div><div style="font-size:13px;color:#A5A3C8;margin-top:12px">Warte auf den Host...</div></div>';
   }
   html+='<div class="ct" style="margin-top:20px"><button class="btn2" onclick="home()">← Verlassen</button></div></div>';
   $("app").innerHTML=html}
 
 // ═══ PLAYING ═══
-var submitted=false;
 function renderPlaying(){if(!room)return;
   var sub=room.subs&&room.subs[room.myId];
   if(sub||submitted){renderWaiting();return}
@@ -138,77 +161,91 @@ function renderWaiting(){
   $("app").innerHTML='<div class="ct" style="padding:60px 0;animation:fadeIn .4s ease"><div style="font-size:14px;color:#10B981;margin-bottom:16px">✓ Ergebnis gesendet</div><div style="font-size:13px;color:#A5A3C8">Warte auf '+(total-done)+' Spieler...</div>'+
   '<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px">'+room.players.map(function(p){var has=room.subs&&room.subs[p.id];return'<div style="opacity:'+(has?'1':'.25')+';font-size:28px;transition:opacity .3s">'+p.avatar+'</div>'}).join("")+'</div></div>'}
 
-// ═══ BULLSEYE (Hold & Release) ═══
+// ═══ BULLSEYE (Start/Stop click, NO live timer) ═══
 function renderBullseye(hdr){var tgt=room.roundData.targetTime;
-  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="border-color:#EC489940;padding:24px"><div class="ct">'+
+  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="border-color:#EC489930;padding:28px"><div class="ct">'+
   '<div class="lb" style="color:#EC4899">Zielzeit</div>'+
-  '<div style="font-size:44px;font-weight:900;color:#F59E0B;margin-bottom:30px;text-shadow:0 0 20px #F59E0B44">'+tgt.toFixed(2)+'s</div>'+
-  '<div id="bW"><div id="bBtn" onmousedown="bD(event)" ontouchstart="bD(event)" style="width:175px;height:175px;border-radius:50%;margin:0 auto;background:linear-gradient(135deg,#8B5CF6,#EC4899);border:3px solid #ffffff30;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px #8B5CF630;user-select:none;-webkit-user-select:none;transition:all .2s"><span style="font-size:14px;font-weight:800;color:#fff;pointer-events:none;line-height:1.6">DRÜCKEN<br>& HALTEN</span></div></div>'+
-  '<div id="bT" style="margin-top:16px;font-size:28px;font-weight:900;font-family:monospace;opacity:.3">0.000s</div></div></div></div>';window._bs="ready"}
-function bD(e){e.preventDefault();if(window._bs!=="ready")return;window._bs="hold";window._bt=performance.now();
-  var el=$("bBtn");el.style.background="linear-gradient(135deg,#F43F5E,#F97316)";el.style.boxShadow="0 0 50px #F43F5E44";el.querySelector("span").textContent="LOSLASSEN!";
-  document.addEventListener("mouseup",bU);document.addEventListener("touchend",bU);
-  var tk=function(){if(window._bs!=="hold")return;var t=(performance.now()-window._bt)/1000;var e2=$("bT");if(e2){e2.textContent=t.toFixed(3)+"s";e2.style.opacity="1"}window._br=requestAnimationFrame(tk)};window._br=requestAnimationFrame(tk)}
-function bU(e){e.preventDefault();if(window._bs!=="hold")return;cancelAnimationFrame(window._br);document.removeEventListener("mouseup",bU);document.removeEventListener("touchend",bU);
-  window._bs="done";var held=(performance.now()-window._bt)/1000;var tgt=room.roundData.targetTime;var dev=Math.abs(held-tgt);var ms=Math.round(dev*1000);
-  var el=$("bBtn");el.style.background="linear-gradient(135deg,#333,#222)";el.style.boxShadow="none";el.querySelector("span").textContent="✓";
-  var t2=$("bT");if(t2){t2.style.opacity="1";t2.style.color=dev<.1?"#10B981":dev<.3?"#F59E0B":"#F43F5E";t2.textContent=held.toFixed(3)+"s"}
-  var w=$("bW");if(w)w.innerHTML+='<div style="font-size:18px;font-weight:900;margin-top:14px;color:'+(dev<.05?"#10B981":dev<.1?"#10B981":dev<.3?"#F59E0B":"#F43F5E")+'">'+(dev<.05?"PERFEKT!":dev<.1?"STARK!":dev<.3?"NICHT SCHLECHT":"DANEBEN!")+'</div><div style="font-size:13px;color:#A5A3C8;margin-top:6px">Abweichung: '+ms+'ms</div>';
-  doSubmit(ms)}
+  '<div style="font-size:48px;font-weight:900;color:#F59E0B;margin-bottom:8px;text-shadow:0 0 20px #F59E0B44">'+tgt.toFixed(2)+'s</div>'+
+  '<div style="font-size:11px;color:#5D5B7A;margin-bottom:30px">Drück START. Zähl im Kopf. Drück STOPP.</div>'+
+  '<div id="bW"><button id="bBtn" onclick="bullTap()" style="width:160px;height:160px;border-radius:50%;margin:0 auto;background:linear-gradient(135deg,#8B5CF6,#EC4899);border:3px solid #ffffff30;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px #8B5CF630;font-size:18px;font-weight:900;color:#fff">START</button></div>'+
+  '</div></div></div>';window._bs="ready"}
+function bullTap(){
+  if(window._bs==="ready"){window._bs="timing";window._bt=performance.now();
+    $("bBtn").textContent="STOPP";$("bBtn").style.background="linear-gradient(135deg,#F43F5E,#F97316)";$("bBtn").style.boxShadow="0 0 50px #F43F5E44"}
+  else if(window._bs==="timing"){window._bs="done";
+    var held=(performance.now()-window._bt)/1000;var tgt=room.roundData.targetTime;var dev=Math.abs(held-tgt);var ms=Math.round(dev*1000);
+    $("bBtn").textContent="✓";$("bBtn").style.background="linear-gradient(135deg,#333,#222)";$("bBtn").style.boxShadow="none";
+    var w=$("bW");if(w)w.innerHTML+='<div style="font-size:28px;font-weight:900;font-family:monospace;margin-top:16px;color:#F1F0FF">'+held.toFixed(3)+'s</div><div style="font-size:18px;font-weight:900;margin-top:10px;color:'+(dev<.05?"#10B981":dev<.1?"#10B981":dev<.3?"#F59E0B":"#F43F5E")+'">'+(dev<.05?"PERFEKT!":dev<.1?"STARK!":dev<.3?"NICHT SCHLECHT":"DANEBEN!")+'</div><div style="font-size:13px;color:#A5A3C8;margin-top:6px">Abweichung: '+ms+'ms</div>';
+    doSubmit(ms)}}
 
-// ═══ TIMESENSE ═══
+// ═══ TIMESENSE (System-controlled stop) ═══
 function renderTimesense(hdr){
-  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="border-color:#06B6D440;padding:24px"><div class="ct" id="tC">'+
-  '<div class="lb" style="color:#06B6D4">Mach dich bereit...</div><div style="font-size:60px;margin-top:30px;animation:float 2s ease infinite">👀</div><div style="font-size:12px;color:#5D5B7A;margin-top:20px">Warte auf das Signal...</div></div></div></div>';
-  setTimeout(function(){window._tT=Date.now();
-    $("tC").innerHTML='<div style="font-size:26px;font-weight:900;color:#10B981;text-shadow:0 0 20px #10B98144;margin-bottom:20px">JETZT ZÄHLEN!</div><div style="font-size:80px;margin-bottom:20px;animation:pulse 1s infinite">🧠</div><div style="font-size:12px;color:#A5A3C8;margin-bottom:24px">Zähl im Kopf... drück STOPP</div><button class="btn btn-cyan" onclick="tS()">STOPP</button>';
-  },1500+Math.random()*1500)}
-function tS(){var el=(Date.now()-window._tT)/1000;window._tE=el;
-  $("tC").innerHTML='<div class="lb" style="color:#06B6D4">Wie viele Sekunden?</div><div style="max-width:200px;margin:20px auto"><input id="tI" class="inp" style="font-size:22px" placeholder="z.B. 4.5" inputmode="decimal"></div><button class="btn btn-cyan" onclick="tB()">Bestätigen</button>';
+  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="border-color:#06B6D430;padding:28px"><div class="ct" id="tC">'+
+  '<div class="lb" style="color:#06B6D4">Mach dich bereit...</div><div style="font-size:60px;margin-top:30px;animation:float 2s ease infinite">👀</div><div style="font-size:12px;color:#5D5B7A;margin-top:20px">Gleich geht es los...</div></div></div></div>';
+  // 3-2-1 countdown then "JETZT"
+  var c=3;setTimeout(function(){
+    var iv=setInterval(function(){
+      var el=$("tC");if(!el){clearInterval(iv);return}
+      if(c>0){el.innerHTML='<div style="font-size:80px;font-weight:900;color:#8B5CF6;animation:pop .3s ease">'+c+'</div>';c--}
+      else if(c===0){el.innerHTML='<div style="font-size:32px;font-weight:900;color:#10B981;text-shadow:0 0 20px #10B98144;margin-bottom:20px">JETZT ZÄHLEN!</div><div style="font-size:80px;animation:pulse 1s infinite">🧠</div><div style="font-size:12px;color:#A5A3C8;margin-top:20px">Zähl im Kopf... die App stoppt automatisch</div>';c--}
+      else{clearInterval(iv);/* breathing animation while counting */
+        $("tC").innerHTML='<div style="position:relative;width:150px;height:150px;margin:0 auto 18px"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid #06B6D422;animation:ripple 2s ease infinite"></div><div style="width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,#06B6D410,transparent 70%);display:flex;align-items:center;justify-content:center;animation:breathe 3s ease infinite"><div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);opacity:.5"></div></div></div><div style="font-size:16px;font-weight:700;color:#06B6D4">Zähle mit...</div>'}
+    },1000)},1500)}
+function renderZeitInput(){
+  $("tC").innerHTML='<div style="animation:pop .4s ease"><div style="font-size:48px;font-weight:900;color:#F43F5E;margin-bottom:16px">STOPP!</div><div style="font-size:14px;font-weight:700;margin-bottom:16px;color:#F1F0FF">Wie lange war das?</div><div style="max-width:200px;margin:0 auto"><input id="tI" class="inp" style="font-size:24px" placeholder="z.B. 4.5" inputmode="decimal"></div><button class="btn btn-cyan" style="margin-top:14px" onclick="zeitSubmit()">Bestätigen</button></div>';
   setTimeout(function(){var i=$("tI");if(i)i.focus()},100)}
-function tB(){var g=parseFloat($("tI").value);if(isNaN(g)||g<=0)return;var dev=Math.abs(g-window._tE);var ms=Math.round(dev*1000);
-  $("tC").innerHTML='<div style="font-size:13px;color:#A5A3C8;margin-bottom:6px">Dein Tipp: '+g.toFixed(2)+'s</div><div style="font-size:13px;color:#A5A3C8;margin-bottom:14px">Tatsächlich: '+window._tE.toFixed(2)+'s</div><div style="font-size:22px;font-weight:900;color:'+(dev<.3?"#10B981":dev<1?"#F59E0B":"#F43F5E")+'">'+(dev<.3?"STARK!":dev<1?"KNAPP!":"DANEBEN!")+'</div>';
+function zeitSubmit(){var g=parseFloat($("tI").value);if(isNaN(g)||g<=0)return;
+  var actual=window._zeitActual||0;var dev=Math.abs(g-actual);var ms=Math.round(dev*1000);
+  $("tC").innerHTML='<div style="font-size:13px;color:#A5A3C8;margin-bottom:6px">Dein Tipp: '+g.toFixed(2)+'s</div><div style="font-size:13px;color:#A5A3C8;margin-bottom:14px">Tatsächlich: '+actual.toFixed(2)+'s</div><div style="font-size:22px;font-weight:900;color:'+(dev<.3?"#10B981":dev<1?"#F59E0B":"#F43F5E")+'">'+(dev<.3?"STARK!":dev<1?"KNAPP!":"DANEBEN!")+'</div>';
   doSubmit(ms)}
 
-// ═══ MEMORY ═══
-function renderMemory(hdr){var shown=room.roundData.shownTime;var dur=2000+Math.random()*1500;
-  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="border-color:#10B98140;padding:24px"><div class="ct" id="mC">'+
-  '<div class="lb" style="color:#10B981">MERK DIR DIESE ZAHL!</div>'+
-  '<div style="font-size:42px;font-weight:900;color:#10B981;text-shadow:0 0 30px #10B98144;margin:30px 0;animation:blink .5s steps(1) infinite">'+shown+'ms</div>'+
-  '<div style="width:100%;height:6px;background:#141432;border-radius:3px;max-width:200px;margin:0 auto;overflow:hidden"><div id="mBar" style="height:100%;background:linear-gradient(90deg,#10B981,#06B6D4);border-radius:3px;width:100%;transition:width '+dur+'ms linear"></div></div>'+
+// ═══ MEMORY (brief flash) ═══
+function renderMemory(hdr){var shown=room.roundData.shownTime;var dur=room.roundData.showDuration||800;
+  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="border-color:#10B98130;padding:28px"><div class="ct" id="mC">'+
+  '<div class="lb" style="color:#10B981">⚠ MERK DIR DIESE ZAHL!</div>'+
+  '<div style="font-size:46px;font-weight:900;color:#10B981;text-shadow:0 0 30px #10B98144;margin:24px 0;font-family:monospace">'+shown.toFixed(3)+'s</div>'+
+  '<div style="width:100%;height:6px;background:#0d0d20;border-radius:3px;max-width:200px;margin:0 auto;overflow:hidden"><div id="mBar" style="height:100%;background:linear-gradient(90deg,#10B981,#06B6D4);border-radius:3px;width:100%;transition:width '+dur+'ms linear"></div></div>'+
   '</div></div></div>';
   setTimeout(function(){var b=$("mBar");if(b)b.style.width="0%"},50);
   setTimeout(function(){
-    $("mC").innerHTML='<div class="lb" style="color:#10B981">Was war die Zahl?</div><div style="font-size:50px;margin:20px 0">🤔</div><div style="max-width:200px;margin:0 auto 20px"><input id="mI" class="inp" style="font-size:20px" placeholder="????ms" inputmode="numeric"></div><button class="btn btn-green" onclick="mB()">Bestätigen</button>';
+    $("mC").innerHTML='<div style="animation:up .4s ease"><div class="lb" style="color:#10B981">Was war die Zahl?</div><div style="font-size:50px;margin:20px 0">🤔</div><div style="max-width:220px;margin:0 auto 20px"><input id="mI" class="inp" style="font-size:22px" placeholder="?.???s" inputmode="decimal"></div><button class="btn btn-green" onclick="memSubmit()">Bestätigen</button></div>';
     setTimeout(function(){var i=$("mI");if(i)i.focus()},100)},dur)}
-function mB(){var g=parseInt($("mI").value);if(isNaN(g))return;var shown=room.roundData.shownTime;var dev=Math.abs(g-shown);
-  $("mC").innerHTML='<div style="font-size:13px;color:#A5A3C8;margin-bottom:6px">Dein Tipp: '+g+'ms</div><div style="font-size:13px;color:#A5A3C8;margin-bottom:14px">Richtig: '+shown+'ms</div><div style="font-size:22px;font-weight:900;color:'+(dev<50?"#10B981":dev<200?"#F59E0B":"#F43F5E")+'">Abweichung: '+dev+'ms</div>';
-  doSubmit(dev)}
+function memSubmit(){var g=parseFloat($("mI").value);if(isNaN(g))return;
+  var shown=room.roundData.shownTime;var dev=Math.abs(g-shown);var ms=Math.round(dev*1000);
+  $("mC").innerHTML='<div style="font-size:13px;color:#A5A3C8;margin-bottom:6px">Dein Tipp: '+g.toFixed(3)+'s</div><div style="font-size:13px;color:#A5A3C8;margin-bottom:14px">Richtig: '+shown.toFixed(3)+'s</div><div style="font-size:22px;font-weight:900;color:'+(ms<50?"#10B981":ms<200?"#F59E0B":"#F43F5E")+'">Abweichung: '+ms+'ms</div>';
+  doSubmit(ms)}
 
-// ═══ REACTION ═══
+// ═══ REACTION (Buzzer Design) ═══
 function renderReaction(hdr){
-  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div id="rB" onclick="rT()" style="text-align:center;padding:40px;background:linear-gradient(135deg,#440000,#330000);min-height:300px;cursor:pointer;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:background .2s"><div id="rC"><div style="font-size:26px;font-weight:900;color:#F43F5E;text-shadow:0 0 20px #F43F5E44">WARTE...</div><div style="font-size:12px;color:#aa4444;margin-top:16px">Nicht zu früh!</div></div></div></div>';
+  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="ct" id="rxWrap" style="padding:20px 0">'+
+  '<div style="font-size:12px;color:#A5A3C8;margin-bottom:24px">Warte auf den grünen Buzzer...</div>'+
+  '<div id="rxBuzzer" onclick="rxTap()" style="width:200px;height:200px;border-radius:50%;margin:0 auto;background:radial-gradient(circle,#F43F5E,#990022);border:6px solid #FF000044;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px #F43F5E44;animation:buzzerPulse 1.5s ease infinite;user-select:none;-webkit-user-select:none"><span id="rxLabel" style="font-size:20px;font-weight:900;color:#fff;pointer-events:none">WARTE...</span></div>'+
+  '<div id="rxSub" style="font-size:11px;color:#aa4444;margin-top:16px">Nicht zu früh!</div></div></div>';
   window._rs="ready";window._rt=setTimeout(function(){window._rs="go";window._r0=performance.now();
-    $("rB").style.background="linear-gradient(135deg,#003300,#004400)";
-    $("rC").innerHTML='<div style="font-size:30px;font-weight:900;color:#10B981;text-shadow:0 0 30px #10B98144;animation:pulse .3s infinite">JETZT!!!</div><div style="font-size:60px;margin-top:10px">🟢</div><div style="font-size:14px;font-weight:700;color:#10B981;margin-top:16px">TIPP JETZT!</div>';
+    var b=$("rxBuzzer");if(b){b.style.background="radial-gradient(circle,#10B981,#004422)";b.style.borderColor="#10B98144";b.style.boxShadow="0 0 60px #10B98144";b.style.animation="pulse .3s infinite"}
+    var l=$("rxLabel");if(l)l.textContent="JETZT!";
+    var s=$("rxSub");if(s){s.style.color="#10B981";s.textContent="TIPP JETZT!"}
   },2000+Math.random()*4000)}
-function rT(){if(window._rs==="ready"){clearTimeout(window._rt);window._rs="early";$("rB").style.background="linear-gradient(135deg,#220033,#330044)";
-    $("rC").innerHTML='<div style="font-size:22px;font-weight:900;color:#9D00FF">ZU FRÜH!</div><div style="font-size:12px;color:#A5A3C8;margin-top:16px">Strafe: 5000ms</div><div style="margin-top:20px"><button class="btn" style="background:#9D00FF" onclick="doSubmit(5000)">WEITER</button></div>';
-  } else if(window._rs==="go"){var rt=performance.now()-window._r0;window._rs="done";$("rB").style.background="#141432";
-    $("rC").innerHTML='<div style="font-size:40px;font-weight:900;color:'+(rt<200?"#10B981":rt<350?"#F59E0B":"#F43F5E")+'">'+Math.round(rt)+'ms</div><div style="font-size:16px;font-weight:800;margin-top:8px;color:'+(rt<200?"#10B981":rt<350?"#F59E0B":"#F97316")+'">'+(rt<150?"BLITZ!":rt<250?"SCHNELL!":rt<400?"OK...":"LANGSAM!")+'</div>';
-    doSubmit(Math.round(rt))}}
+function rxTap(){
+  if(window._rs==="ready"){clearTimeout(window._rt);window._rs="early";
+    var b=$("rxBuzzer");if(b){b.style.background="radial-gradient(circle,#9D00FF,#330044)";b.style.borderColor="#9D00FF44";b.style.boxShadow="0 0 40px #9D00FF44";b.style.animation="none"}
+    $("rxLabel").textContent="ZU FRÜH!";$("rxSub").innerHTML='<div style="color:#A5A3C8;margin-top:8px">Strafe: 5000ms</div><button class="btn" style="background:#9D00FF;margin-top:12px;max-width:200px" onclick="doSubmit(5000)">WEITER</button>';
+  } else if(window._rs==="go"){var rt=performance.now()-window._r0;window._rs="done";var ms=Math.round(rt);
+    var b2=$("rxBuzzer");if(b2){b2.style.background="radial-gradient(circle,#141432,#0d0d20)";b2.style.borderColor=(ms<200?"#10B981":ms<350?"#F59E0B":"#F43F5E")+"66";b2.style.boxShadow="none";b2.style.animation="none"}
+    $("rxLabel").innerHTML='<div style="font-size:32px">'+ms+'ms</div><div style="font-size:12px;margin-top:4px">'+(ms<150?"BLITZ!":ms<250?"SCHNELL!":ms<400?"OK...":"LANGSAM!")+'</div>';
+    $("rxSub").textContent="";doSubmit(ms)}}
 
 // ═══ RESULTS ═══
 function renderResults(){submitted=false;var res=room.results||[],isHost=room.hostId===room.myId,m=MODES.find(function(x){return x.id===room.mode})||MODES[0];
   var html='<div style="animation:pop .4s ease"><div class="ct" style="margin-bottom:16px"><div style="font-size:11px;color:#5D5B7A;letter-spacing:3px;text-transform:uppercase">Runde '+room.currentRound+'</div><div style="font-size:14px;font-weight:800;color:#F59E0B;margin-top:4px">'+m.icon+' '+m.name+'</div></div>';
-  html+='<div class="cd" style="border-color:#F59E0B40;margin-bottom:20px">';
+  html+='<div class="cd" style="border-color:#F59E0B30;margin-bottom:20px">';
   if(room.format==="teams"){
     ["a","b"].forEach(function(team){var ps=room.players;
       var tRes=res.filter(function(r){var p=ps.find(function(x){return x.id===r.pid});return p&&p.team===team});
       var avg=tRes.length?tRes.reduce(function(s,r){return s+r.value},0)/tRes.length:99999;
       var oTeam=team==="a"?"b":"a";var oRes=res.filter(function(r){var p=ps.find(function(x){return x.id===r.pid});return p&&p.team===oTeam});
       var oAvg=oRes.length?oRes.reduce(function(s,r){return s+r.value},0)/oRes.length:99999;var won=avg<oAvg;
-      html+='<div style="padding:14px;margin-bottom:8px;border-radius:12px;border:2px solid '+TC[team]+';background:'+(won?TC[team]+"15":"#0d0d20")+'"><div style="font-size:12px;font-weight:800;color:'+TC[team]+';margin-bottom:8px">Team '+team.toUpperCase()+(won?" 🏆":"")+'</div><div style="font-size:11px;color:#A5A3C8;margin-bottom:4px">Ø '+avg.toFixed(0)+'ms</div>';
+      html+='<div style="padding:14px;margin-bottom:8px;border-radius:12px;border:2px solid '+TC[team]+';background:'+(won?TC[team]+"15":"#0d0d20")+'"><div style="font-size:12px;font-weight:800;color:'+TC[team]+';margin-bottom:8px">Team '+(team==="a"?"Pink 🩷":"Cyan 💎")+(won?" 🏆":"")+'</div><div style="font-size:11px;color:#A5A3C8;margin-bottom:4px">Ø '+avg.toFixed(0)+'ms</div>';
       tRes.forEach(function(r){html+='<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:11px;color:#ccc"><span>'+r.avatar+' '+r.name+'</span><span style="font-family:monospace">'+r.value.toFixed(0)+'ms</span></div>'});html+='</div>'});
   } else {
     res.forEach(function(r,i){var medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);var isMe=r.pid===room.myId;var color=i===0?"#F59E0B":i===1?"#C0C0C0":i===2?"#CD7F32":"#5D5B7A";
@@ -222,14 +259,12 @@ function renderResults(){submitted=false;var res=room.results||[],isHost=room.ho
 // ═══ GAME OVER ═══
 function renderGameOver(){submitted=false;var sc=room.finalScores||{};var sorted=Object.entries(sc).sort(function(a,b){return b[1]-a[1]});var isHost=room.hostId===room.myId;
   var html='<div style="animation:pop .5s ease"><div class="ct" style="margin-bottom:20px"><div style="font-size:60px;animation:float 2s ease infinite">🏆</div><div style="font-size:24px;font-weight:900;background:linear-gradient(135deg,#F59E0B,#FBBF24);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-top:8px">Spiel vorbei!</div></div>';
-  html+='<div class="cd" style="border-color:#F59E0B40;margin-bottom:20px">';
+  html+='<div class="cd" style="border-color:#F59E0B30;margin-bottom:20px">';
   sorted.forEach(function(e,i){var pid=e[0],pts=e[1];var p=room.players.find(function(x){return x.id===pid});if(!p)return;
     var medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);var isW=i===0;
-    html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:'+(isW?"18px 14px":"12px 14px")+';border-bottom:'+(i<sorted.length-1?"1px solid #1C1C42":"none")+';background:'+(isW?"#F59E0B10":"transparent")+';border-radius:'+(i===0?"12px 12px 0 0":i===sorted.length-1?"0 0 12px 12px":"0")+';animation:slideIn .4s ease '+(i*.15)+'s both"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:'+(isW?'28':'18')+'px">'+medal+'</span><span style="font-size:'+(isW?'28':'20')+'px">'+p.avatar+'</span><span style="font-size:'+(isW?'14':'12')+'px;font-weight:'+(isW?'900':'700')+';color:'+(isW?"#F59E0B":"#F1F0FF")+'">'+p.name+'</span></div><div style="font-size:'+(isW?'18':'13')+'px;font-weight:900;color:'+(isW?"#F59E0B":"#5D5B7A")+'">'+pts+' PTS</div></div>'});
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:'+(isW?"18px 14px":"12px 14px")+';border-bottom:'+(i<sorted.length-1?"1px solid #1C1C42":"none")+';background:'+(isW?"#F59E0B10":"transparent")+';animation:slideIn .4s ease '+(i*.15)+'s both"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:'+(isW?'28':'18')+'px">'+medal+'</span><span style="font-size:'+(isW?'28':'20')+'px">'+p.avatar+'</span><span style="font-size:'+(isW?'14':'12')+'px;font-weight:'+(isW?'900':'700')+';color:'+(isW?"#F59E0B":"#F1F0FF")+'">'+p.name+'</span></div><div style="font-size:'+(isW?'18':'13')+'px;font-weight:900;color:'+(isW?"#F59E0B":"#5D5B7A")+'">'+pts+' PTS</div></div>'});
   html+='</div>';
   if(isHost)html+='<div class="ct"><button class="btn" style="margin-bottom:12px" onclick="so.emit(\'playAgain\')">Nochmal spielen</button></div>';
   html+='<div class="ct"><button class="btn btn-gray" onclick="home()">← Startseite</button></div></div>';
   $("app").innerHTML=html}
-
-home();
 </script></body></html>
