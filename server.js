@@ -13,7 +13,7 @@ function genRoundData(mode){
   switch(mode){
     case"bullseye":return{targetTime:parseFloat(rngF(1.5,8).toFixed(2))};
     case"timesense":return{hiddenDuration:parseFloat(rngF(3,8).toFixed(2))};
-    case"memory":return{shownTime:parseFloat(rngF(1,6).toFixed(3)),showDuration:rng(350,550)};
+    case"memory":return{shownTime:parseFloat(rngF(1,6).toFixed(3)),showDuration:rng(200,400)};
     case"reaction":return{};
     default:return{};
   }
@@ -38,9 +38,8 @@ function scheduleZeitStop(room){
   if(room.mode!=="timesense"||!room.roundData.hiddenDuration)return;
   const dur=room.roundData.hiddenDuration;
   const rnd=room.currentRound;
-  // Client does: 1.5s wait + 3s countdown(3,2,1) + 1s "JETZT" = 5.5s before counting starts
-  // Then hidden timer runs for dur seconds
-  const totalDelay=(5.5+dur)*1000;
+  // Client: 2s wait + 3s countdown = 5s before counting starts
+  const totalDelay=(5+dur)*1000;
   setTimeout(()=>{
     if(room.phase==="playing"&&room.currentRound===rnd){
       io.to(room.code).emit("zeitStop",{actual:dur});
