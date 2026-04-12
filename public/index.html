@@ -67,8 +67,8 @@ setTimeout(function(){var s=$("splash");if(s)s.style.display="none";home()},2800
 so.on("connect",function(){myId=so.id});
 var lastPhase="",lastRound=0,submitted=false;
 so.on("sync",function(data){room=data;
-  if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound}
-  if(room.phase==="playing"&&lastPhase==="playing"&&!submitted)return;
+  if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound;preRoundShown=0}
+  if(room.phase==="playing"&&lastPhase==="playing"&&!submitted&&preRoundShown===room.currentRound)return;
   if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}
   lastPhase=room.phase;render()});
 so.on("zeitStop",function(d){window._zeitActual=d.actual;sfxStop();vb([50,25,50]);renderZeitInput()});
@@ -77,7 +77,7 @@ function render(){if(!room)return;
   switch(room.phase){case"lobby":renderLobby();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"gameover":renderGameOver();break}}
 
 // ═══ HOME — 2x2 Game Grid ═══
-function home(){room=null;
+function home(){room=null;preRoundShown=0;lastRound=0;submitted=false;
   $("app").innerHTML='<div class="ct" style="animation:up .5s ease;padding-top:30px">'+
   '<div style="font-size:36px;font-weight:900;margin-bottom:4px;background:linear-gradient(135deg,#8B5CF6,#EC4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">TimeTap</div>'+
   '<div style="font-size:12px;color:#5D5B7A;margin-bottom:30px">Wähle ein Spiel</div>'+
@@ -140,11 +140,32 @@ function renderLobby(){
   $("app").innerHTML=html}
 
 // ═══ PLAYING ═══
+var preRoundShown=0; // tracks which round's pre-round we've shown
 function renderPlaying(){if(!room)return;
   var sub=room.subs&&room.subs[room.myId];if(sub||submitted){renderWaiting();return}
+  // Show pre-round screen before actual game (once per round)
+  if(preRoundShown!==room.currentRound){renderPreRound();return}
   var m=MODES.find(function(x){return x.id===room.mode})||MODES[0];
   var hdr='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div style="font-size:12px;color:#A5A3C8">'+m.icon+' '+m.name+'</div><div style="font-size:14px;font-weight:900;color:#F59E0B">Runde '+room.currentRound+'/'+room.totalRounds+'</div><div style="font-size:12px;color:#A5A3C8">'+(room.format==="ffa"?"FFA":"Teams")+'</div></div>';
   switch(room.mode){case"bullseye":renderBullseye(hdr);break;case"timesense":renderTimesense(hdr);break;case"memory":renderMemory(hdr);break;case"reaction":renderReaction(hdr);break}}
+
+function renderPreRound(){
+  var m=MODES.find(function(x){return x.id===room.mode})||MODES[0];
+  var ps=room.players.filter(function(p){return p.connected});
+  var descs={bullseye:"Drück START, zähl die Zielzeit im Kopf, drück STOPP. Kein Timer — reines Gefühl!",
+    timesense:"Ein Signal ertönt — zähl ab dann im Kopf. Die App stoppt automatisch. Du gibst deine Schätzung ein.",
+    memory:"Eine Zahl blitzt kurz auf. Merk sie dir! Danach tippst du sie ein.",
+    reaction:"Der Buzzer ist rot. Wenn er GRÜN wird — drück sofort! Zu früh = 5000ms Strafe."};
+
+  $("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:16px">'+
+  '<div style="font-size:11px;color:#5D5B7A;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">Runde '+room.currentRound+' / '+room.totalRounds+'</div>'+
+  '<div style="font-size:40px;margin:16px 0">'+m.icon+'</div>'+
+  '<div style="font-size:24px;font-weight:900;color:'+m.color+';margin-bottom:16px">'+m.name+'</div>'+
+  '<div class="cd" style="margin-bottom:20px;text-align:left;border-color:'+m.color+'30"><div style="font-size:13px;color:#A5A3C8;line-height:1.6">'+(descs[room.mode]||"")+'</div></div>'+
+  '<div class="cd" style="margin-bottom:20px"><div class="lb">Spieler</div><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px">'+
+  ps.map(function(p){var tc=p.team?TC[p.team]:"#2D2D5E";return'<div style="display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:28px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:14px;border:2px solid '+tc+';background:#0d0d20">'+p.avatar+'</div><div style="font-size:9px;color:#A5A3C8;font-weight:700">'+p.name+'</div></div>'}).join("")+
+  '</div></div>'+
+  '<button class="btn" style="background:'+m.bg+'" onclick="preRoundShown=room.currentRound;sfxTick();renderPlaying()">Bereit!</button></div>'}
 function doSubmit(v,x){if(submitted)return;submitted=true;so.emit("submit",{value:v,extra:x||{}})}
 function renderWaiting(){var total=room.players.filter(function(p){return p.connected}).length;var done=room.subs?Object.keys(room.subs).length:0;
   $("app").innerHTML='<div class="ct" style="padding:60px 0;animation:fadeIn .4s ease"><div style="font-size:14px;color:#10B981;margin-bottom:16px">✓ Ergebnis gesendet</div><div style="font-size:13px;color:#A5A3C8">Warte auf '+(total-done)+' Spieler...</div><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px">'+room.players.map(function(p){var has=room.subs&&room.subs[p.id];return'<div style="opacity:'+(has?'1':'.25')+';font-size:28px;transition:opacity .3s">'+p.avatar+'</div>'}).join("")+'</div></div>'}
@@ -160,20 +181,28 @@ function bullTap(){if(window._bs==="ready"){window._bs="timing";window._bt=perfo
     var w=$("bW");if(w)w.innerHTML+='<div style="font-size:28px;font-weight:900;font-family:monospace;margin-top:16px;color:#F1F0FF">'+held.toFixed(3)+'s</div><div style="font-size:18px;font-weight:900;margin-top:10px;color:'+(dev<.05?"#10B981":dev<.1?"#10B981":dev<.3?"#F59E0B":"#F43F5E")+'">'+(dev<.05?"PERFEKT!":dev<.1?"STARK!":dev<.3?"NICHT SCHLECHT":"DANEBEN!")+'</div><div style="font-size:13px;color:#A5A3C8;margin-top:6px">Abweichung: '+ms+'ms</div>';
     doSubmit(ms)}}
 
-// ═══ TIMESENSE (System-controlled, with sounds + clear countdown) ═══
+// ═══ TIMESENSE (crystal-clear start signal) ═══
 function renderTimesense(hdr){
-  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="border-color:#06B6D430;padding:28px"><div class="ct" id="tC"><div class="lb" style="color:#06B6D4">Mach dich bereit...</div><div style="font-size:60px;margin-top:30px;animation:float 2s ease infinite">👀</div><div style="font-size:12px;color:#5D5B7A;margin-top:20px">Gleich geht es los...</div></div></div></div>';
-  // 1.5s wait, then 3-2-1-JETZT countdown, total 5.5s before counting starts
+  $("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="border-color:#06B6D430;padding:28px"><div class="ct" id="tC"><div style="font-size:14px;color:#5D5B7A;margin-bottom:20px">Mach dich bereit...</div><div style="font-size:80px;animation:float 2s ease infinite">👀</div></div></div></div>';
+  // Phase 1: Wait 2s, then countdown
   setTimeout(function(){
-    var c=3;sfxTick();vb(10);
-    $("tC").innerHTML='<div style="font-size:80px;font-weight:900;color:#8B5CF6;animation:pop .3s ease">3</div>';
+    // Phase 2: Countdown 3-2-1 with identical tick sounds
+    var c=3;
+    $("tC").innerHTML='<div id="cdNum" style="font-size:100px;font-weight:900;color:#2D2D5E">3</div><div style="font-size:12px;color:#5D5B7A;margin-top:12px">Gleich geht\'s los...</div>';
+    sfxTick();
     var iv=setInterval(function(){c--;
-      if(c>0){sfxTick();vb(10);$("tC").innerHTML='<div style="font-size:80px;font-weight:900;color:#8B5CF6;animation:pop .3s ease">'+c+'</div>'}
-      else if(c===0){sfxGo();vb([80,40,80,40,120]);$("tC").innerHTML='<div style="font-size:32px;font-weight:900;color:#10B981;text-shadow:0 0 20px #10B98144;margin-bottom:20px">JETZT ZÄHLEN!</div><div style="font-size:80px;animation:pulse 1s infinite">🧠</div><div style="font-size:12px;color:#A5A3C8;margin-top:20px">Zähl im Kopf... die App stoppt!</div>'}
-      else{clearInterval(iv);
-        $("tC").innerHTML='<div style="position:relative;width:150px;height:150px;margin:0 auto 18px"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid #06B6D422;animation:ripple 2s ease infinite"></div><div style="width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,#06B6D410,transparent 70%);display:flex;align-items:center;justify-content:center;animation:breathe 3s ease infinite"><div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);opacity:.5"></div></div></div><div style="font-size:16px;font-weight:700;color:#06B6D4">Zähle mit...</div><div style="font-size:11px;color:#5D5B7A;margin-top:8px">Die App stoppt automatisch</div>'}
+      if(c>0){sfxTick();$("cdNum").textContent=c;$("cdNum").style.animation="none";void $("cdNum").offsetHeight;$("cdNum").style.animation="pop .3s ease"}
+      else if(c===0){
+        clearInterval(iv);
+        // Phase 3: BIG GREEN "LOS!" — THIS is when counting starts
+        sfxGo();vb([100,50,100,50,200]);
+        $("tC").innerHTML='<div style="animation:pop .3s ease"><div style="width:180px;height:180px;border-radius:50%;margin:0 auto;background:linear-gradient(135deg,#10B981,#06B6D4);display:flex;align-items:center;justify-content:center;box-shadow:0 0 60px #10B98166"><div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:4px">LOS!</div></div><div style="font-size:14px;font-weight:800;color:#10B981;margin-top:16px;text-shadow:0 0 10px #10B98144">Ab JETZT zählen!</div></div>';
+        // Phase 4: After 1.5s, switch to counting animation
+        setTimeout(function(){
+          $("tC").innerHTML='<div style="animation:fadeIn .6s ease"><div style="position:relative;width:150px;height:150px;margin:0 auto 18px"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid #06B6D422;animation:ripple 2s ease infinite"></div><div style="width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,#06B6D410,transparent 70%);display:flex;align-items:center;justify-content:center;animation:breathe 3s ease infinite"><div style="font-size:40px">🧠</div></div></div><div style="font-size:16px;font-weight:700;color:#06B6D4">Zähle weiter...</div><div style="font-size:11px;color:#5D5B7A;margin-top:8px">Die App stoppt automatisch</div></div>'
+        },1500)}
     },1000)
-  },1500)}
+  },2000)}
 function renderZeitInput(){
   var el=$("tC");if(!el)return;
   el.innerHTML='<div style="animation:pop .4s ease"><div style="font-size:48px;font-weight:900;color:#F43F5E;margin-bottom:16px">STOPP!</div><div style="font-size:14px;font-weight:700;margin-bottom:16px;color:#F1F0FF">Wie lange war das?</div><div style="max-width:200px;margin:0 auto"><input id="tI" class="inp" style="font-size:24px" placeholder="z.B. 4.5" inputmode="decimal"></div><button class="btn btn-cyan" style="margin-top:14px" onclick="zeitSubmit()">Bestätigen</button></div>';
