@@ -1,1 +1,1 @@
-{"name":"timetap","version":"2.1.0","scripts":{"start":"node server.js"},"dependencies":{"express":"^4.18.2","socket.io":"^4.7.2"}}
+{"name":"timetap","version":"3.0.0","scripts":{"start":"node server.js"},"dependencies":{"express":"^4.18.2","socket.io":"^4.7.2"}}
