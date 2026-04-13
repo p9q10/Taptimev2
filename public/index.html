@@ -168,7 +168,7 @@ function stopTension(){if(_tensionLoop){clearInterval(_tensionLoop);_tensionLoop
 /* ═══ BACKGROUND MUSIC - minimal adaptive loop ═══ */
 var _musicNodes=[],_musicLoop=null,_musicPlaying=false;
 function startMusic(){if(_musicPlaying)return;initAudio();if(!actx)return;_musicPlaying=true;playMusicBar()}
-function playMusicBar(){if(!_musicPlaying||!actx)return;try{var notes=[262,294,330,349,392,440];var t=actx.currentTime;for(var i=0;i<8;i++){var o=actx.createOscillator(),g=actx.createGain(),f=actx.createBiquadFilter();f.type="lowpass";f.frequency.value=600;o.type="sine";o.frequency.value=notes[Math.floor(Math.random()*notes.length)]*(Math.random()>.5?1:0.5);g.gain.value=0;g.gain.setValueAtTime(0,t+i*0.5);g.gain.linearRampToValueAtTime(.03,t+i*0.5+0.05);g.gain.exponentialRampToValueAtTime(.001,t+i*0.5+0.45);o.connect(f);f.connect(g);g.connect(actx.destination);o.start(t+i*0.5);o.stop(t+i*0.5+0.5);_musicNodes.push(o)}_musicLoop=setTimeout(playMusicBar,4000)}catch(e){_musicPlaying=false}}
+function playMusicBar(){if(!_musicPlaying||!actx)return;_musicNodes.forEach(function(n){try{n.disconnect()}catch(e){}});_musicNodes=[];try{var notes=[262,294,330,349,392,440];var t=actx.currentTime;for(var i=0;i<8;i++){var o=actx.createOscillator(),g=actx.createGain(),f=actx.createBiquadFilter();f.type="lowpass";f.frequency.value=600;o.type="sine";o.frequency.value=notes[Math.floor(Math.random()*notes.length)]*(Math.random()>.5?1:0.5);g.gain.value=0;g.gain.setValueAtTime(0,t+i*0.5);g.gain.linearRampToValueAtTime(.03,t+i*0.5+0.05);g.gain.exponentialRampToValueAtTime(.001,t+i*0.5+0.45);o.connect(f);f.connect(g);g.connect(actx.destination);o.start(t+i*0.5);o.stop(t+i*0.5+0.5);_musicNodes.push(o)}_musicLoop=setTimeout(playMusicBar,4000)}catch(e){_musicPlaying=false}}
 function stopMusic(){_musicPlaying=false;if(_musicLoop){clearTimeout(_musicLoop);_musicLoop=null}_musicNodes.forEach(function(n){try{n.stop()}catch(e){}});_musicNodes=[]}
 
 /* ═══ SCREEN EFFECTS ═══ */
@@ -208,12 +208,17 @@ var SEGS=[{id:"bullseye",color:"#FF8A65"},{id:"timesense",color:"#7C8CF8"},{id:"
 function $(id){return document.getElementById(id)}
 function fullClientReset(){clearTimeout(window._tsWait);clearTimeout(window._rt);window._bs=null;window._rs=null;window._tbs=null;submitted=false;lastRound=0;lastPhase="";lastTeamSubCount=0;stopTension();stopMusic()}
 setTimeout(function(){var s=$("splash");if(s)s.style.display="none";home()},2600);
-so.on("connect",function(){myId=so.id;if(window._lastRoomCode&&myName){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r){if(r&&r.ok){so.emit("requestSync")}else{window._lastRoomCode=null}})}});
+so.on("connect",function(){myId=so.id;if(window._lastRoomCode&&myName){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r){if(r&&r.ok){lastPhase="";so.emit("requestSync")}else{
+  /* Retry after delay — server may not have processed old disconnect yet */
+  setTimeout(function(){if(window._lastRoomCode&&myName&&so.connected){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r2){if(r2&&r2.ok){lastPhase="";so.emit("requestSync")}else{window._lastRoomCode=null}})}},2000)
+}})}});
 var lastPhase="",lastRound=0,submitted=false,lastTeamSubCount=0;
 var _bgTime=0;
-document.addEventListener("visibilitychange",function(){if(document.hidden){_bgTime=Date.now()}else{if(actx&&actx.state==="suspended")try{actx.resume()}catch(e){}if(!so.connected){so.connect()}if(room&&window._lastRoomCode){lastPhase="";so.emit("requestSync")}}});
+document.addEventListener("visibilitychange",function(){if(document.hidden){_bgTime=Date.now()}else{if(actx&&actx.state==="suspended")try{actx.resume()}catch(e){}if(!so.connected){so.connect();/* connect handler will rejoin+sync */}else if(room&&window._lastRoomCode){lastPhase="";so.emit("requestSync")}}});
 window.addEventListener("focus",function(){if(room&&window._lastRoomCode&&so.connected){lastPhase="";so.emit("requestSync")}});
-so.on("reconnect",function(){if(window._lastRoomCode&&myName){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r){if(r&&r.ok){lastPhase="";so.emit("requestSync")}else{window._lastRoomCode=null}})}});
+so.on("reconnect",function(){if(window._lastRoomCode&&myName){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r){if(r&&r.ok){lastPhase="";so.emit("requestSync")}else{
+  setTimeout(function(){if(window._lastRoomCode&&myName&&so.connected){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r2){if(r2&&r2.ok){lastPhase="";so.emit("requestSync")}else{window._lastRoomCode=null}})}},2000)
+}})}});
 so.on("sync",function(data){room=data;if(room.code)window._lastRoomCode=room.code;if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound}if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}var tsC=room.teamSubs?Object.keys(room.teamSubs).length:0;var tCh=room.roundData&&room.roundData.teamMode&&tsC!==lastTeamSubCount;if(tCh)lastTeamSubCount=tsC;if(room.phase==="playing"&&lastPhase==="playing"&&!submitted&&!tCh)return;if(room.phase===lastPhase&&(room.phase==="results"||room.phase==="gameover"||room.phase==="pregame"||room.phase==="elimination"||room.phase==="spin"))return;lastPhase=room.phase;render()});
 so.on("zeitStop",function(d){if(submitted||!room||room.phase!=="playing"||room.mode!=="timesense")return;window._zeitActual=d.actual;sfxStop();vb([80,30,80]);renderZeitInput()});
 function render(){if(!room)return;switch(room.phase){case"lobby":renderLobby();break;case"pregame":renderPreGame();break;case"spin":renderSpin();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"elimination":renderElimination();break;case"gameover":renderGameOver();break}}
