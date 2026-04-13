@@ -236,10 +236,16 @@ io.on("connection",sk=>{
     if(!code||!name)return cb&&cb({ok:false,err:"Missing data"});
     const room=rooms.get(code.toUpperCase());
     if(!room)return cb&&cb({ok:false,err:"Raum nicht gefunden"});
-    const player=room.players.find(p=>p.name===name&&!p.connected);
+    // Find player by name — accept BOTH connected and disconnected
+    // (mobile browsers often reconnect before server detects old disconnect)
+    const player=room.players.find(p=>p.name===name);
     if(!player)return cb&&cb({ok:false,err:"Spieler nicht gefunden"});
+    // Skip if already this socket
+    if(player.id===sk.id){player.connected=true;cb&&cb({ok:true,code:code.toUpperCase()});bc(room);return}
     // Remap old socket ID to new one
     const oldId=player.id;
+    // Disconnect old socket from room if it still exists
+    try{const oldSk=io.sockets.sockets.get(oldId);if(oldSk)oldSk.leave(code.toUpperCase())}catch(e){}
     player.id=sk.id;player.connected=true;
     sk.join(code.toUpperCase());
     // Update scores/subs keys from old ID to new ID
@@ -248,11 +254,16 @@ io.on("connection",sk=>{
     if(room.subs[oldId]){room.subs[sk.id]=room.subs[oldId];room.subs[sk.id].pid=sk.id;delete room.subs[oldId]}
     if(room.teamSubs[oldId]){room.teamSubs[sk.id]=room.teamSubs[oldId];room.teamSubs[sk.id].pid=sk.id;delete room.teamSubs[oldId]}
     if(room.hostId===oldId)room.hostId=sk.id;
+    // Update results if they reference old ID
+    if(room.results){room.results.forEach(r=>{if(r.pid===oldId)r.pid=sk.id})}
     cb&&cb({ok:true,code:code.toUpperCase()});
     bc(room);
   });
 
   sk.on("disconnect",()=>{const f=findRoom(sk.id);if(!f)return;const{code,room,player}=f;
+    // Only mark disconnected if this socket is still the player's current socket
+    // (rejoin may have already remapped to a new socket)
+    if(player.id!==sk.id)return;
     player.connected=false;if(room.phase==="lobby")room.players=room.players.filter(p=>p.id!==sk.id);
     const connected=room.players.filter(p=>p.connected);
     if(connected.length===0){setTimeout(()=>{const r=rooms.get(code);if(r&&r.players.every(p=>!p.connected)){clearTimers(r);rooms.delete(code)}},60000)}
