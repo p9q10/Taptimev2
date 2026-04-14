@@ -22,7 +22,7 @@ function genTarget(){return parseFloat((0.5+Math.random()*4.5).toFixed(1))}
 
 function genRoundData(mode,format){
   switch(mode){
-    case"bullseye":return{targetTime:genTarget(),teamMode:format==="teams"};
+    case"bullseye":return{targetTime:genTarget()};
     case"timesense":{
       const dur=genTarget();
       const waitDelay=parseFloat((2+Math.random()*3).toFixed(1));
@@ -33,7 +33,7 @@ function genRoundData(mode,format){
       return{shownTime:parseFloat((0.5+Math.random()*4.5).toFixed(dec)),showDuration:250,decimals:dec};
     }
     case"reaction":return{greenIdx:rng(0,9)};
-    case"countdown":return{targetTime:parseFloat((2+Math.random()*8).toFixed(1)),duration:14000,power:2.5};
+    case"countdown":return{targetTime:parseFloat((2+Math.random()*6).toFixed(1)),duration:7000,power:2.5};
     default:return{};
   }
 }
@@ -53,7 +53,7 @@ function roomState(room){
     roundsPerPhase:room.roundsPerPhase,currentRound:room.currentRound,
     currentPhaseRound:room.currentPhaseRound,roundData:room.roundData,
     players:room.players.map(p=>({id:p.id,name:p.name,avatar:p.avatar,team:p.team,connected:p.connected,eliminated:p.eliminated})),
-    results:room.results,finalScores:room.finalScores,
+    results:room.results,finalScores:room.finalScores,teamScores:room.teamScores||null,
     scores:room.scores,phaseScores:room.phaseScores,
     hostId:room.hostId,subs:subMap,teamSubs:tSubMap};
 }
@@ -86,7 +86,7 @@ function fullReset(room){
   clearTimers(room);
   room.currentRound=0;room.currentPhaseRound=0;room.subs={};room.teamSubs={};
   room.results=null;room.finalScores=null;room.roundData=null;room.mode=null;
-  room.scores={};room.phaseScores={};room.modeHistory=[];room.zeitStartedAt=null;
+  room.scores={};room.phaseScores={};room.modeHistory=[];room.zeitStartedAt=null;room.teamScores=null;
   room.players.forEach(p=>{room.scores[p.id]=0;room.phaseScores[p.id]=0;p.eliminated=false});
 }
 
@@ -95,7 +95,7 @@ function spinForRound(room){
   room.currentRound++;room.currentPhaseRound++;
   room.mode=pickMode(room);
   room.roundData=genRoundData(room.mode,room.format);
-  room.subs={};room.teamSubs={};room.results=null;
+  room.subs={};room.teamSubs={};room.results=null;room.teamScores=null;
   room.phase="spin";bc(room);
 }
 
@@ -177,11 +177,23 @@ io.on("connection",sk=>{
     const active=activePlayers(room);
     if(Object.keys(room.subs).length>=active.length){
       const sorted=Object.values(room.subs).sort((a,b)=>a.value-b.value);
-      sorted.forEach((r,i)=>{
-        const pts=Math.max(sorted.length-i,1);
-        room.scores[r.pid]=(room.scores[r.pid]||0)+pts;
-        room.phaseScores[r.pid]=(room.phaseScores[r.pid]||0)+pts;
-      });
+      if(room.format==="teams"){
+        const teamA=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="a"});
+        const teamB=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="b"});
+        const sumA=teamA.reduce((s,r)=>s+r.value,0);
+        const sumB=teamB.reduce((s,r)=>s+r.value,0);
+        room.teamScores={a:sumA,b:sumB};
+        room.players.filter(p=>p.connected&&!p.eliminated).forEach(p=>{
+          const won=(p.team==="a"&&sumA<=sumB)||(p.team==="b"&&sumB<sumA);
+          room.scores[p.id]=(room.scores[p.id]||0)+(won?3:1);
+        });
+      }else{
+        sorted.forEach((r,i)=>{
+          const pts=Math.max(sorted.length-i,1);
+          room.scores[r.pid]=(room.scores[r.pid]||0)+pts;
+          room.phaseScores[r.pid]=(room.phaseScores[r.pid]||0)+pts;
+        });
+      }
       room.results=sorted;room.phase="results";bc(room);
     }
   });
