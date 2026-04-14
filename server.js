@@ -6,7 +6,7 @@ const rooms=new Map();
 const CH="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function mkCode(){let c;do{c="";for(let i=0;i<4;i++)c+=CH[Math.floor(Math.random()*CH.length)]}while(rooms.has(c));return c}
 function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a}
-const GAME_MODES=["bullseye","timesense","memory","reaction"];
+const GAME_MODES=["bullseye","timesense","memory","reaction","countdown"];
 function pickMode(){return GAME_MODES[Math.floor(Math.random()*GAME_MODES.length)]}
 
 // Unified: 0.5-5s, max 1 decimal
@@ -25,6 +25,7 @@ function genRoundData(mode,format){
       return{shownTime:parseFloat((0.5+Math.random()*4.5).toFixed(dec)),showDuration:rng(200,350),decimals:dec};
     }
     case"reaction":return{greenIdx:rng(0,9)};
+    case"countdown":return{targetTime:parseFloat((3+Math.random()*11).toFixed(1)),duration:18000,power:2.5};
     default:return{};
   }
 }
