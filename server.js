@@ -30,7 +30,7 @@ function genRoundData(mode,format){
     }
     case"memory":{
       const dec=Math.random()>.5?4:3;
-      return{shownTime:parseFloat((0.5+Math.random()*4.5).toFixed(dec)),showDuration:110,decimals:dec};
+      return{shownTime:parseFloat((0.5+Math.random()*4.5).toFixed(dec)),showDuration:105,decimals:dec};
     }
     case"reaction":return{greenIdx:rng(0,9)};
     case"countdown":return{targetTime:parseFloat((2+Math.random()*6).toFixed(1)),duration:7000,power:2.5};
