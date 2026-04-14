@@ -30,7 +30,7 @@ function genRoundData(mode,format){
     }
     case"memory":{
       const dec=Math.random()>.5?4:3;
-      return{shownTime:parseFloat((0.5+Math.random()*4.5).toFixed(dec)),showDuration:120,decimals:dec};
+      return{shownTime:parseFloat((0.5+Math.random()*4.5).toFixed(dec)),showDuration:110,decimals:dec};
     }
     case"reaction":return{greenIdx:rng(0,9)};
     case"countdown":return{targetTime:parseFloat((2+Math.random()*6).toFixed(1)),duration:7000,power:2.5};
@@ -273,11 +273,8 @@ io.on("connection",sk=>{
     const f=findRoom(sk.id);if(!f||f.player.eliminated)return;
     const ps={...state,pid:sk.id,name:f.player.name,avatar:f.player.avatar};
     f.room.playerStates[sk.id]=ps;
-    f.room.players.forEach(p=>{
-      if(p.eliminated&&p.connected&&p.spectating===sk.id){
-        io.to(p.id).emit("spectatorUpdate",ps);
-      }
-    });
+    // Broadcast to entire room — client filters by selected player
+    sk.to(f.code).emit("spectatorUpdate",ps);
   });
 
   // Resume/reconnect: client requests fresh state
