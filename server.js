@@ -30,7 +30,7 @@ function genRoundData(mode,format){
     }
     case"memory":{
       const dec=Math.random()>.5?4:3;
-      return{shownTime:parseFloat((0.5+Math.random()*4.5).toFixed(dec)),showDuration:250,decimals:dec};
+      return{shownTime:parseFloat((0.5+Math.random()*4.5).toFixed(dec)),showDuration:150,decimals:dec};
     }
     case"reaction":return{greenIdx:rng(0,9)};
     case"countdown":return{targetTime:parseFloat((2+Math.random()*6).toFixed(1)),duration:7000,power:2.5};
@@ -92,6 +92,10 @@ function fullReset(room){
 
 // Spin phase: pick random mode, prepare round data
 function spinForRound(room){
+  // Safety: prevent overflow rounds in teams mode
+  if(room.format==="teams"&&room.currentRound>=room.roundsPerPhase){
+    room.finalScores={...room.scores};room.phase="gameover";bc(room);return;
+  }
   room.currentRound++;room.currentPhaseRound++;
   room.mode=pickMode(room);
   room.roundData=genRoundData(room.mode,room.format);
@@ -226,6 +230,13 @@ io.on("connection",sk=>{
   sk.on("nextRound",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
     clearTimers(room);
+    // Team mode: enforce round limit
+    if(room.format==="teams"){
+      if(room.currentRound>=room.roundsPerPhase){
+        room.finalScores={...room.scores};room.phase="gameover";bc(room);return;
+      }
+      spinForRound(room);return;
+    }
     const gameOver=checkElimination(room);
     if(gameOver){room.finalScores={...room.scores};room.phase="gameover";bc(room);return}
     if(room.format==="ffa"&&room.currentPhaseRound===0){room.phase="elimination";bc(room);return}
