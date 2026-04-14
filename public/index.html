@@ -80,6 +80,7 @@ input{font-family:var(--f);outline:none}
 @keyframes goldPulse{0%,100%{box-shadow:0 3px 0 rgba(255,112,67,.15),0 6px 24px rgba(255,112,67,.12)}50%{box-shadow:0 3px 0 rgba(255,112,67,.2),0 6px 32px rgba(255,112,67,.22)}}
 @keyframes redPulse{0%,100%{box-shadow:0 3px 0 rgba(239,83,80,.1),0 6px 24px rgba(239,83,80,.1)}50%{box-shadow:0 3px 0 rgba(239,83,80,.15),0 6px 32px rgba(239,83,80,.2)}}
 @keyframes greenPulse{0%,100%{box-shadow:0 3px 0 rgba(38,166,154,.1),0 6px 24px rgba(38,166,154,.1)}50%{box-shadow:0 3px 0 rgba(38,166,154,.15),0 6px 32px rgba(38,166,154,.22)}}
+@keyframes pinkPulse{0%,100%{box-shadow:0 3px 0 rgba(236,64,122,.1),0 6px 24px rgba(236,64,122,.1)}50%{box-shadow:0 3px 0 rgba(236,64,122,.15),0 6px 32px rgba(236,64,122,.22)}}
 @keyframes ringExpand{0%{transform:scale(1);opacity:.25}100%{transform:scale(1.5);opacity:0}}
 @keyframes tickFlash{0%,100%{opacity:.3}50%{opacity:1}}
 @keyframes breathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.01)}}
@@ -213,10 +214,10 @@ gamer:{n:"Gamer",c:"#66BB6A",s:'<ellipse cx="40" cy="48" rx="16" ry="18" fill="#
 };
 var AV=Object.keys(AVD);
 function avHTML(id,sz){var a=AVD[id];if(!a)return'<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:#E0E0E0;display:flex;align-items:center;justify-content:center;font-size:'+(sz*.4)+'px;color:#999">?</div>';return'<svg viewBox="0 0 80 80" width="'+sz+'" height="'+sz+'" style="display:block;overflow:hidden;border-radius:50%"><circle cx="40" cy="40" r="40" fill="'+a.c+'"/>'+a.s+'</svg>'}
-var MI={bullseye:{name:"Bullseye",icon:"🎯",color:"#FF7043",desc:"START drücken, Zielzeit im Kopf zählen, STOPP drücken."},timesense:{name:"Zeitgefühl",icon:"🧠",color:"#5C6BC0",desc:"Buzzer wird grün = zählen! Die App stoppt automatisch."},memory:{name:"Memory",icon:"💾",color:"#26A69A",desc:"Zahl blitzt kurz auf. Merken und eingeben!"},reaction:{name:"Reaktion",icon:"⚡",color:"#FFA726",desc:"10 Buzzer. Einer wird grün. Sofort drücken!"}};
-var SEGS=[{id:"bullseye",color:"#FF7043"},{id:"timesense",color:"#5C6BC0"},{id:"memory",color:"#26A69A"},{id:"reaction",color:"#FFA726"}];
+var MI={bullseye:{name:"Bullseye",icon:"🎯",color:"#FF7043",desc:"START drücken, Zielzeit im Kopf zählen, STOPP drücken."},timesense:{name:"Zeitgefühl",icon:"🧠",color:"#5C6BC0",desc:"Buzzer wird grün = zählen! Die App stoppt automatisch."},memory:{name:"Memory",icon:"💾",color:"#26A69A",desc:"Zahl blitzt kurz auf. Merken und eingeben!"},reaction:{name:"Reaktion",icon:"⚡",color:"#FFA726",desc:"10 Buzzer. Einer wird grün. Sofort drücken!"},countdown:{name:"Countdown",icon:"⏱",color:"#EC407A",desc:"Timer zählt von 30 runter — immer schneller! Stoppe bei der Zielzeit."}};
+var SEGS=[{id:"bullseye",color:"#FF7043"},{id:"timesense",color:"#5C6BC0"},{id:"memory",color:"#26A69A"},{id:"reaction",color:"#FFA726"},{id:"countdown",color:"#EC407A"}];
 function $(id){return document.getElementById(id)}
-function fullClientReset(){clearTimeout(window._tsWait);clearTimeout(window._rt);window._bs=null;window._rs=null;window._tbs=null;submitted=false;lastRound=0;lastPhase="";lastTeamSubCount=0;stopTension();stopMusic()}
+function fullClientReset(){cancelAnimationFrame(window._cdFrame);clearTimeout(window._tsWait);clearTimeout(window._rt);window._bs=null;window._rs=null;window._tbs=null;window._cd=null;submitted=false;lastRound=0;lastPhase="";lastTeamSubCount=0;stopTension();stopMusic()}
 setTimeout(function(){var s=$("splash");if(s)s.style.display="none";home()},2600);
 so.on("connect",function(){myId=so.id;if(window._lastRoomCode&&myName){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r){if(r&&r.ok){lastPhase="";so.emit("requestSync")}else{
   /* Retry after delay — server may not have processed old disconnect yet */
@@ -293,20 +294,20 @@ function doJoin(){var c=$("ji");if(!c||c.value.length<4){$("jerr").textContent="
 function renderLobby(){var isHost=room.hostId===room.myId,ps=room.players||[];var html='<div style="animation:up .4s ease"><div class="ct" style="margin-bottom:24px"><button onclick="try{navigator.clipboard.writeText(\''+room.code+'\')}catch(e){}" style="display:inline-block;padding:0;border:none;background:none;cursor:pointer"><div style="position:relative;width:140px;height:140px;margin:0 auto"><div style="position:absolute;inset:0;border-radius:50%;background:#fff;border:3px solid var(--gold);box-shadow:0 4px 20px rgba(255,112,67,.12)"></div><div style="position:absolute;inset:8px;border-radius:50%;background:#FFF7F3;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:9px;color:var(--sub);letter-spacing:3px;font-weight:700;margin-bottom:6px">CODE · KOPIEREN</div><div style="font-family:var(--mono);font-size:28px;color:var(--gold);letter-spacing:6px;font-weight:500">'+room.code+'</div></div></div></button></div><div class="cd" style="margin-bottom:16px"><div class="lb">'+(room.format==="ffa"?"⚔️ Alle vs Alle":"🤝 Team vs Team")+'</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center">';ps.forEach(function(p){html+='<div class="pchip" style="opacity:'+(p.connected?'1':'.3')+'">'+avHTML(p.avatar,24)+'<span style="font-size:12px;font-weight:700;color:'+(p.id===room.myId?"var(--gold)":"var(--text)")+'">'+p.name+(p.id===room.myId?' <span style="font-size:8px;color:var(--green);background:rgba(38,166,154,.1);padding:2px 8px;border-radius:999px;letter-spacing:1px;font-weight:800">DU</span>':'')+'</span></div>'});html+='</div></div>';if(room.format==="teams"){var myP=ps.find(function(p){return p.id===room.myId});var mt=myP?myP.team:null;html+='<div class="cd" style="margin-bottom:16px"><div class="lb">Dein Team</div><div style="display:flex;gap:12px;margin-top:10px"><button onclick="so.emit(\'setTeam\',{team:\'a\'})" style="flex:1;padding:15px;border-radius:999px;border:'+(mt==="a"?"2.5px solid var(--gold)":"1px solid var(--border)")+';background:'+(mt==="a"?"rgba(255,112,67,.06)":"#fff")+';color:'+(mt==="a"?"var(--gold)":"var(--sub)")+';font-size:13px;font-weight:800;cursor:pointer;font-family:var(--f);letter-spacing:1px">Team A 🟠</button><button onclick="so.emit(\'setTeam\',{team:\'b\'})" style="flex:1;padding:15px;border-radius:999px;border:'+(mt==="b"?"2.5px solid var(--blue)":"1px solid var(--border)")+';background:'+(mt==="b"?"rgba(92,107,192,.06)":"#fff")+';color:'+(mt==="b"?"var(--blue)":"var(--sub)")+';font-size:13px;font-weight:800;cursor:pointer;font-family:var(--f);letter-spacing:1px">Team B 🔵</button></div></div>'}if(isHost){html+='<div class="cd" style="margin-bottom:16px"><div class="lb">Runden pro Phase</div><div style="display:flex;gap:10px;margin-top:10px">';[2,3,5].forEach(function(r){var sel=room.roundsPerPhase===r;html+='<div onclick="so.emit(\'updateSettings\',{roundsPerPhase:'+r+'})" style="flex:1;padding:15px;cursor:pointer;text-align:center;border-radius:999px;border:'+(sel?"2.5px solid var(--gold)":"1px solid var(--border)")+';background:'+(sel?"rgba(255,112,67,.06)":"#fff")+';font-family:var(--mono);font-size:22px;color:'+(sel?"var(--gold)":"var(--sub)")+';font-weight:500">'+r+'</div>'});html+='</div></div><div class="ct"><button class="btn" onclick="so.emit(\'start\')"'+(ps.filter(function(p){return p.connected}).length>=2?'':' disabled')+'>Spiel starten</button></div>'}else{html+='<div class="ct" style="margin-top:24px"><div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div></div>'}html+='<div class="ct" style="margin-top:24px"><button class="btn2" onclick="home()">← Verlassen</button></div></div>';$("app").innerHTML=html}
 
 /* ══ PRE-GAME ══ */
-function renderPreGame(){var ps=room.players.filter(function(p){return p.connected});var isHost=room.hostId===room.myId;$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:14px"><div style="font-family:var(--f);font-size:22px;font-weight:900;color:var(--gold);letter-spacing:4px;margin-bottom:4px">TIMETAP</div><div style="font-size:10px;color:var(--sub);margin-bottom:24px;font-weight:700;letter-spacing:2px">'+(room.format==="ffa"?"ALLE GEGEN ALLE":"TEAM VS TEAM")+'</div><div class="cd" style="margin-bottom:22px;text-align:left"><div style="font-size:12px;color:var(--sub);line-height:1.8;font-weight:600">Jede Runde wird ein zufälliges Spiel gedreht. Bullseye, Zeitgefühl, Memory oder Reaktion — seid bereit für alles!</div></div><div class="cd" style="margin-bottom:24px"><div class="lb">Spieler</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:14px">'+ps.map(function(p){return'<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--border);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)">'+avHTML(p.avatar,40)+'</div><div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">'+p.name+'</div></div>'}).join('')+'</div></div>'+(isHost?'<button class="btn" onclick="so.emit(\'startFirstRound\')">Los geht\'s</button>':'<div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div>')+'</div>'}
+function renderPreGame(){var ps=room.players.filter(function(p){return p.connected});var isHost=room.hostId===room.myId;$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:14px"><div style="font-family:var(--f);font-size:22px;font-weight:900;color:var(--gold);letter-spacing:4px;margin-bottom:4px">TIMETAP</div><div style="font-size:10px;color:var(--sub);margin-bottom:24px;font-weight:700;letter-spacing:2px">'+(room.format==="ffa"?"ALLE GEGEN ALLE":"TEAM VS TEAM")+'</div><div class="cd" style="margin-bottom:22px;text-align:left"><div style="font-size:12px;color:var(--sub);line-height:1.8;font-weight:600">Jede Runde wird ein zufälliges Spiel gedreht. Bullseye, Zeitgefühl, Memory, Reaktion oder Countdown — seid bereit für alles!</div></div><div class="cd" style="margin-bottom:24px"><div class="lb">Spieler</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:14px">'+ps.map(function(p){return'<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--border);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)">'+avHTML(p.avatar,40)+'</div><div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">'+p.name+'</div></div>'}).join('')+'</div></div>'+(isHost?'<button class="btn" onclick="so.emit(\'startFirstRound\')">Los geht\'s</button>':'<div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div>')+'</div>'}
 
 /* ══ SPIN WHEEL ══ */
 function renderSpin(){
 var mode=room.mode;var m=MI[mode];var isHost=room.hostId===room.myId;
 var active=room.players.filter(function(p){return!p.eliminated&&p.connected});
-var colors=["#FF7043","#5C6BC0","#26A69A","#FFA726"];
-var icons=["🎯","🧠","💾","⚡"];
+var colors=["#FF7043","#5C6BC0","#26A69A","#FFA726","#EC407A"];
+var icons=["🎯","🧠","💾","⚡","⏱"];
 var modeIdx=SEGS.findIndex(function(s){return s.id===mode});
-var targetAngle=360*4+(315-modeIdx*90);
+var targetAngle=360*4+(324-modeIdx*72);
 var svg='<svg viewBox="0 0 240 240" width="220" height="220" style="display:block;margin:0 auto">';
 svg+='<circle cx="120" cy="120" r="118" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="4"/>';
-for(var i=0;i<4;i++){
-  var a1=i*90-90,a2=(i+1)*90-90,r=110,cx=120,cy=120;
+for(var i=0;i<5;i++){
+  var a1=i*72-90,a2=(i+1)*72-90,r=110,cx=120,cy=120;
   var x1=cx+r*Math.cos(a1*Math.PI/180),y1=cy+r*Math.sin(a1*Math.PI/180);
   var x2=cx+r*Math.cos(a2*Math.PI/180),y2=cy+r*Math.sin(a2*Math.PI/180);
   svg+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 0,1 '+x2+','+y2+' Z" fill="'+colors[i]+'" opacity="0.85"/>';
@@ -345,7 +346,7 @@ setTimeout(function(){
 }
 
 /* ══ PLAYING ══ */
-function renderPlaying(){if(!room)return;clearTimeout(window._tsWait);clearTimeout(window._rt);var me=room.players.find(function(p){return p.id===room.myId});if(me&&me.eliminated){$("app").innerHTML='<div class="ct" style="padding:60px 0;animation:fadeIn .4s ease"><div style="position:relative;width:100px;height:100px;margin:0 auto 22px"><div style="position:absolute;inset:0;border-radius:50%;background:#FFF5F2;border:3px solid var(--red);box-shadow:0 4px 16px rgba(239,83,80,.15)"></div><div style="position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:42px">💀</div></div><div style="font-size:18px;font-weight:800;margin-bottom:8px">Du bist raus!</div><div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf das Spielende...</div></div>';return}var sub=room.subs&&room.subs[room.myId];if(sub||submitted){renderWaiting();return}var m=MI[room.mode]||MI.bullseye;var active=room.players.filter(function(p){return!p.eliminated&&p.connected});var hdr='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><div style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:999px;background:#fff;border:1px solid var(--border)"><span style="font-size:14px">'+m.icon+'</span><span style="font-size:11px;color:var(--sub);font-weight:800;letter-spacing:1px">'+m.name.toUpperCase()+'</span></div><div style="font-family:var(--mono);font-size:14px;color:var(--gold);font-weight:500">R'+room.currentRound+'</div><div style="padding:8px 14px;border-radius:999px;background:#fff;border:1px solid var(--border);font-size:10px;color:var(--sub);font-weight:800">'+active.length+' 👤</div></div>';if(room.mode==="bullseye"&&room.roundData&&room.roundData.teamMode){renderTeamBullseye(hdr);return}switch(room.mode){case"bullseye":renderBullseye(hdr);break;case"timesense":renderTimesense(hdr);break;case"memory":renderMemory(hdr);break;case"reaction":renderReaction(hdr);break}}
+function renderPlaying(){if(!room)return;cancelAnimationFrame(window._cdFrame);clearTimeout(window._tsWait);clearTimeout(window._rt);var me=room.players.find(function(p){return p.id===room.myId});if(me&&me.eliminated){$("app").innerHTML='<div class="ct" style="padding:60px 0;animation:fadeIn .4s ease"><div style="position:relative;width:100px;height:100px;margin:0 auto 22px"><div style="position:absolute;inset:0;border-radius:50%;background:#FFF5F2;border:3px solid var(--red);box-shadow:0 4px 16px rgba(239,83,80,.15)"></div><div style="position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:42px">💀</div></div><div style="font-size:18px;font-weight:800;margin-bottom:8px">Du bist raus!</div><div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf das Spielende...</div></div>';return}var sub=room.subs&&room.subs[room.myId];if(sub||submitted){renderWaiting();return}var m=MI[room.mode]||MI.bullseye;var active=room.players.filter(function(p){return!p.eliminated&&p.connected});var hdr='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><div style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:999px;background:#fff;border:1px solid var(--border)"><span style="font-size:14px">'+m.icon+'</span><span style="font-size:11px;color:var(--sub);font-weight:800;letter-spacing:1px">'+m.name.toUpperCase()+'</span></div><div style="font-family:var(--mono);font-size:14px;color:var(--gold);font-weight:500">R'+room.currentRound+'</div><div style="padding:8px 14px;border-radius:999px;background:#fff;border:1px solid var(--border);font-size:10px;color:var(--sub);font-weight:800">'+active.length+' 👤</div></div>';if(room.mode==="bullseye"&&room.roundData&&room.roundData.teamMode){renderTeamBullseye(hdr);return}switch(room.mode){case"bullseye":renderBullseye(hdr);break;case"timesense":renderTimesense(hdr);break;case"memory":renderMemory(hdr);break;case"reaction":renderReaction(hdr);break;case"countdown":renderCountdown(hdr);break}}
 
 function doSubmit(v){if(submitted)return;submitted=true;so.emit("submit",{value:v})}
 
@@ -374,6 +375,80 @@ function memSub(){var el=$("mI");if(!el)return;var g=parseFloat(el.value);if(isN
 /* ══ REACTION ══ */
 function renderReaction(hdr){var gIdx=room.roundData.greenIdx;var bhtml='';for(var i=0;i<10;i++){bhtml+='<div id="rz'+i+'" onclick="rzTap('+i+')" style="width:58px;height:58px;border-radius:50%;background:#FFF5F2;border:2.5px solid #EF5350;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(239,83,80,.06);transition:all .15s;user-select:none;font-family:var(--mono);font-size:10px;color:rgba(239,83,80,.4);font-weight:500">'+(i+1)+'</div>'}$("app").innerHTML='<div style="animation:up .3s ease">'+hdr+'<div class="cd" style="padding:24px"><div class="ct"><div style="font-size:12px;color:var(--sub);margin-bottom:24px;font-weight:700;letter-spacing:2px">Warte auf GRÜN!</div><div id="rzGrid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;max-width:340px;margin:0 auto">'+bhtml+'</div><div id="rzSub" style="font-size:11px;color:var(--sub);margin-top:22px;font-weight:700">Nicht zu früh!</div></div></div></div>';window._rs="ready";window._rGreen=gIdx;window._rt=setTimeout(function(){if(!room||room.phase!=="playing")return;window._rs="go";window._r0=performance.now();sfxGo();vb([80,30,80,30,120]);var gz=$("rz"+gIdx);if(!gz)return;gz.style.background="#F2F9F8";gz.style.borderColor="#26A69A";gz.style.color="#26A69A";gz.style.boxShadow="0 4px 16px rgba(38,166,154,.2)";gz.style.animation="greenPulse 0.65s ease infinite";gz.style.transform="scale(1.12)";var s=$("rzSub");if(s){s.style.color="#26A69A";s.textContent="Grünen drücken!"}},2000+Math.random()*4000)}
 function rzTap(idx){if(window._rs==="ready"){clearTimeout(window._rt);window._rs="early";sfxBad();vbFail();screenShake();var b=$("rz"+idx);if(b){b.style.background="var(--raised)";b.style.borderColor="var(--sub)";b.style.color="var(--sub)";b.style.animation="none";b.style.boxShadow="none"}var s=$("rzSub");if(s)s.innerHTML='<div style="color:#EF5350;font-weight:800;font-size:13px;letter-spacing:2px;margin-bottom:16px">ZU FRÜH! 5s Strafe</div><button class="btn" style="max-width:200px" onclick="doSubmit(5)">Weiter</button>'}else if(window._rs==="go"){window._rs="done";if(idx!==window._rGreen){sfxBad();vbFail();screenShake();var s2=$("rzSub");if(s2)s2.innerHTML='<div style="color:#EF5350;font-weight:800;letter-spacing:2px">Falscher Buzzer! 5s</div>';doSubmit(5);return}var rt=(performance.now()-window._r0)/1000;if(rt<.25){sfxGood();vbSuccess();screenFlash("rgba(38,166,154,.15)",150)}else{sfxAlmost();vbMedium()}var b2=$("rz"+idx);if(b2){b2.style.background="#FFF7F3";b2.style.borderColor="var(--gold)";b2.style.color="var(--gold)";b2.style.animation="none";b2.style.boxShadow="0 2px 12px rgba(255,112,67,.15)";b2.style.transform="scale(1)"}var rc=rt<.2?"#26A69A":rt<.35?"#FFA726":"#EF5350";var rt2=rt<.2?"BLITZ!":rt<.35?"SCHNELL!":"LANGSAM!";var s3=$("rzSub");if(s3)s3.innerHTML=lcdPanel(rt.toFixed(3)+'s','30')+'<div style="font-size:14px;font-weight:900;color:'+rc+';letter-spacing:3px;margin-top:10px">'+rt2+'</div>';doSubmit(rt)}}
+
+/* ══ COUNTDOWN ══ */
+function renderCountdown(hdr){var tgt=room.roundData.targetTime;
+$("app").innerHTML='<div style="animation:up .3s ease">'+hdr+
+'<div class="cd" style="padding:28px"><div class="ct">'+
+'<div class="lb">Zielzeit</div>'+
+lcdPanel(tgt.toFixed(1)+'<span style="font-size:18px;color:var(--sub)">s</span>','42')+
+'<div style="font-size:11px;color:var(--sub);margin-top:12px;margin-bottom:6px;font-weight:700;letter-spacing:1px">Stoppe den Countdown bei der Zielzeit!</div>'+
+'<div style="font-size:10px;color:#EC407A;margin-bottom:20px;font-weight:700;letter-spacing:1px">⚡ Wird immer schneller!</div>'+
+'<div id="cdDisp" style="font-family:var(--mono);font-size:44px;color:var(--text);font-weight:500;margin:0 0 24px;letter-spacing:2px">30.00<span style="font-size:16px;color:var(--sub)">s</span></div>'+
+'<div id="cdW">'+
+  '<div style="position:relative;width:180px;height:180px;margin:0 auto">'+
+    '<div style="position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(236,64,122,.1);animation:ringExpand 2.5s ease infinite"></div>'+
+    '<button id="cdBtn" onclick="countdownTap()" style="position:absolute;inset:0;border-radius:50%;background:#fff;border:3px solid #EC407A;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:15px;color:#EC407A;letter-spacing:3px;cursor:pointer;transition:all .25s;animation:pinkPulse 2.5s ease infinite;font-weight:700;box-shadow:0 3px 0 rgba(236,64,122,.15),0 6px 24px rgba(236,64,122,.1)">START</button>'+
+  '</div>'+
+'</div>'+
+'</div></div></div>';
+window._cd="ready"}
+
+function countdownTap(){
+if(window._cd==="ready"){
+  window._cd="running";window._cdStart=performance.now();
+  sfxBuzzer();vbBuzzer();startTension();
+  var b=$("cdBtn");
+  if(b){b.style.animation="buzzerPress .15s ease";b.textContent="STOPP";
+    b.style.background="#FFF0F5";b.style.borderColor="#EC407A";b.style.color="#EC407A";
+    setTimeout(function(){if(b)b.style.animation="pinkPulse 1s ease infinite"},150)}
+  window._cdFrame=requestAnimationFrame(countdownFrame);
+}else if(window._cd==="running"){
+  window._cd="done";cancelAnimationFrame(window._cdFrame);stopTension();
+  var elapsed=performance.now()-window._cdStart;
+  var progress=Math.min(elapsed/18000,1);
+  var displayed=30*(1-Math.pow(progress,2.5));
+  var tgt=room.roundData.targetTime;var dev=Math.abs(displayed-tgt);
+  sfxBuzzer();vbBuzzer();
+  var b2=$("cdBtn");
+  if(b2){b2.style.animation="buzzerPress .15s ease";b2.textContent="✓";
+    b2.style.background=dev<.5?"#F2F9F8":"#FFF5F2";
+    b2.style.borderColor=dev<.5?"#26A69A":"#EF5350";
+    b2.style.color=dev<.5?"#26A69A":"#EF5350";
+    setTimeout(function(){if(b2)b2.style.animation="none"},150)}
+  if(dev<.3){sfxGood();vbSuccess();screenFlash("rgba(38,166,154,.15)",200);spawnConfetti(15)}
+  else if(dev<1){sfxAlmost();vbMedium();screenFlash("rgba(255,167,38,.1)",150)}
+  else{sfxBad();vbFail();screenShake()}
+  var rc=dev<.3?"#26A69A":dev<1?"#FFA726":"#EF5350";
+  var rt=dev<.3?"PERFEKT!":dev<1?"KNAPP!":"DANEBEN!";
+  var disp=$("cdDisp");
+  if(disp)disp.innerHTML=lcdPanel(displayed.toFixed(3)+'s','30');
+  var w=$("cdW");
+  if(w)w.innerHTML='<div style="animation:pop .35s ease;margin-top:10px">'+
+    '<div style="font-size:16px;font-weight:900;color:'+rc+';letter-spacing:2px;animation:resultPulse .4s ease">'+rt+'</div>'+
+    '<div style="font-size:12px;color:var(--sub);margin-top:6px;font-weight:700">'+dev.toFixed(3)+'s Abweichung</div></div>';
+  doSubmit(dev);
+}}
+
+function countdownFrame(){
+  if(window._cd!=="running")return;
+  var elapsed=performance.now()-window._cdStart;
+  var progress=Math.min(elapsed/18000,1);
+  var displayed=30*(1-Math.pow(progress,2.5));
+  var disp=$("cdDisp");
+  if(disp){
+    var spd=progress<.3?"var(--text)":progress<.7?"#EC407A":"#EF5350";
+    disp.innerHTML='<span style="color:'+spd+'">'+displayed.toFixed(2)+'</span><span style="font-size:16px;color:var(--sub)">s</span>';
+  }
+  if(progress>=1){
+    window._cd="done";stopTension();sfxBad();vbFail();screenShake();
+    var tgt=room.roundData.targetTime;
+    var disp2=$("cdDisp");if(disp2)disp2.innerHTML='<span style="color:#EF5350">0.00</span><span style="font-size:16px;color:var(--sub)">s</span>';
+    var w=$("cdW");if(w)w.innerHTML='<div style="animation:pop .35s ease;margin-top:10px"><div style="font-size:16px;font-weight:900;color:#EF5350;letter-spacing:2px">ZEIT ABGELAUFEN!</div></div>';
+    doSubmit(tgt);return;
+  }
+  window._cdFrame=requestAnimationFrame(countdownFrame);
+}
 
 /* ══ RESULTS ══ */
 function renderResults(){submitted=false;sfxGood();vbSuccess();stopTension();startMusic();var res=room.results||[],isHost=room.hostId===room.myId,m=MI[room.mode]||MI.bullseye;var html='<div style="animation:pop .4s ease"><div class="ct" style="margin-bottom:20px"><div class="lb">Runde '+room.currentRound+'</div><div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:6px"><div style="width:40px;height:40px;border-radius:50%;background:'+m.color+'15;border:2px solid '+m.color+';display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 12px '+m.color+'20">'+m.icon+'</div><div style="font-size:17px;font-weight:900;color:'+m.color+';letter-spacing:2px">'+m.name.toUpperCase()+'</div></div></div><div class="cd" style="margin-bottom:24px;padding:8px 16px">';res.forEach(function(r,i){var medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);var isMe=r.pid===room.myId;html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 6px;border-bottom:'+(i<res.length-1?"1px solid var(--border)":"none")+';animation:slideIn .3s ease '+(i*.08)+'s both'+(i===0?';background:rgba(255,112,67,.04);border-radius:16px;margin:0 -6px;padding:14px 12px':'')+'"><div style="display:flex;align-items:center;gap:12px"><span style="font-size:'+(i<3?'19':'12')+'px;width:28px;text-align:center">'+medal+'</span><div style="width:44px;height:44px;border-radius:50%;background:#fff;border:2.5px solid '+(isMe?"var(--gold)":"var(--border)")+';display:flex;align-items:center;justify-content:center;box-shadow:'+(isMe?"0 2px 12px rgba(255,112,67,.15)":"none")+'">'+avHTML(r.avatar,32)+'</div><span style="font-size:14px;font-weight:800;color:'+(isMe?"var(--gold)":"var(--text)")+'">'+r.name+'</span></div><div class="dsp" style="font-size:14px;color:'+(i===0?"var(--text)":"var(--sub)")+';font-weight:500">'+r.value.toFixed(3)+'s</div></div>'});html+='</div>';if(isHost){html+='<div class="ct" style="display:flex;flex-direction:column;align-items:center;gap:14px"><button class="btn" onclick="so.emit(\'nextRound\')">Weiter ▶</button><button class="btn2" style="font-size:10px;letter-spacing:2px" onclick="so.emit(\'endGame\')">BEENDEN</button></div>'}else{html+='<div class="ct" style="font-size:11px;color:var(--sub);margin-top:18px;font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div>'}html+='</div>';$("app").innerHTML=html}
