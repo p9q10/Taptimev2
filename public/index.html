@@ -210,7 +210,7 @@ var MI={bullseye:{name:"Bullseye",icon:"🎯",color:"#E8793A",desc:"START drück
 var SEGS=[{id:"bullseye",color:"#E8793A"},{id:"timesense",color:"#5B9BD5"},{id:"memory",color:"#5DAE72"},{id:"reaction",color:"#E8A035"},{id:"countdown",color:"#D94F8F"}];
 function $(id){return document.getElementById(id)}
 var _spectating=null;
-function emitState(data){if(!room||!so.connected)return;var me=room.players?room.players.find(function(p){return p.id===room.myId}):null;if(me&&me.eliminated)return;setTimeout(function(){var appEl=$("app");data.html=appEl?appEl.innerHTML:"";so.emit("playerState",data)},0)}
+function emitState(data){if(!room||!so.connected)return;var me=room.players?room.players.find(function(p){return p.id===room.myId}):null;if(me&&me.eliminated)return;if(data.periodic){so.emit("playerState",data);return}setTimeout(function(){var appEl=$("app");data.html=appEl?appEl.innerHTML:"";so.emit("playerState",data)},0)}
 function selectSpectateTarget(pid){_spectating=pid;window._specState=null;cancelAnimationFrame(window._specFrame);so.emit("spectate",{targetPid:pid});renderSpectator()}
 function fullClientReset(){cancelAnimationFrame(window._cdFrame);cancelAnimationFrame(window._specFrame);clearTimeout(window._tsWait);clearTimeout(window._tsMax);clearTimeout(window._rt);window._bs=null;window._rs=null;window._tbs=null;window._cd=null;window._zeitActual=null;window._specState=null;_spectating=null;submitted=false;lastRound=0;lastPhase="";lastTeamSubCount=0;stopTension();stopMusic()}
 setTimeout(function(){var s=$("splash");if(s)s.style.display="none";home()},2600);
@@ -227,7 +227,7 @@ so.on("reconnect",function(){if(window._lastRoomCode&&myName){so.emit("rejoin",{
 }})}});
 so.on("sync",function(data){room=data;if(room.code)window._lastRoomCode=room.code;if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound}if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}if(room.phase==="playing"&&lastPhase==="playing"&&!submitted)return;if(room.phase===lastPhase&&(room.phase==="results"||room.phase==="gameover"||room.phase==="pregame"||room.phase==="elimination"||room.phase==="spin"))return;lastPhase=room.phase;render()});
 so.on("zeitStop",function(d){if(submitted||!room||room.phase!=="playing"||room.mode!=="timesense")return;if(room.currentRound!==lastRound)return;window._zeitActual=d.actual;clearTimeout(window._tsWait);clearTimeout(window._tsMax);sfxStop();vb([80,30,80]);renderZeitInput()});
-so.on("spectatorUpdate",function(data){if(!room||!room.players)return;var me=room.players.find(function(p){return p.id===room.myId});if(!me||!me.eliminated)return;if(data.pid===_spectating){window._specState=data;renderSpectatorView()}});
+so.on("spectatorUpdate",function(data){if(!room||!room.players)return;var me=room.players.find(function(p){return p.id===room.myId});if(!me||!me.eliminated)return;if(data.pid!==_spectating)return;if(data.periodic){var m=$("specMirror");if(!m)return;var cd=m.querySelector("#cdDisp");if(cd&&data.displayValue!==undefined){var spd=(data.progress||0)<.3?"var(--text)":(data.progress||0)<.7?"#D94F8F":"#D94F4F";cd.innerHTML='<span style="color:'+spd+'">'+data.displayValue+'</span><span style="font-size:16px;color:var(--sub)">s</span>'}return}window._specState=data;renderSpectatorView()});
 function render(){if(!room)return;switch(room.phase){case"lobby":renderLobby();break;case"pregame":renderPreGame();break;case"spin":renderSpin();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"elimination":renderElimination();break;case"gameover":renderGameOver();break}}
 
 function watchSVG(sz,clr){var c=clr||'#E8793A';return'<svg viewBox="0 0 100 120" width="'+sz+'" height="'+(sz*1.2)+'" xmlns="http://www.w3.org/2000/svg"><rect x="40" y="2" width="20" height="14" rx="5" fill="'+c+'"/><circle cx="50" cy="70" r="44" stroke="'+c+'" stroke-width="2.5" fill="#fff"/><circle cx="50" cy="70" r="38" stroke="rgba(0,0,0,.06)" stroke-width=".8" fill="none"/><line x1="50" y1="30" x2="50" y2="36" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="104" x2="50" y2="110" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="14" y1="70" x2="20" y2="70" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="80" y1="70" x2="86" y2="70" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="70" x2="50" y2="42" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="70" x2="68" y2="58" stroke="rgba(0,0,0,.2)" stroke-width="1.5" stroke-linecap="round"/><circle cx="50" cy="70" r="3" fill="'+c+'"/></svg>'}
@@ -244,7 +244,7 @@ $("app").innerHTML=
   '<div style="font-size:11px;color:var(--sub);letter-spacing:5px;margin-top:4px;font-weight:700">PARTY GAME</div>'+
 '</div>'+
 '<div class="ct">'+
-  '<button onclick="initAudio();setupRoom()" style="position:relative;width:180px;height:180px;border-radius:50%;background:linear-gradient(180deg,#4A4A4A,#2D2D2D);border:4px solid var(--gold);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 0 #1a1a1a,0 10px 36px rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.1);transition:transform .12s,box-shadow .12s;font-family:var(--f)">'+
+  '<button onclick="initAudio();setupRoom()" style="position:relative;width:180px;height:180px;border-radius:50%;background:linear-gradient(180deg,#4A4A4A,#2D2D2D);border:4px solid var(--gold);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 0 #1a1a1a,0 10px 36px rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.1);transition:transform .12s,box-shadow .12s;font-family:var(--f);margin:0 auto">'+
     '<div style="font-size:36px">🎉</div>'+
     '<div style="font-size:16px;font-weight:900;color:#fff;letter-spacing:3px">PARTY</div>'+
     '<div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:2px">MODUS</div>'+
@@ -491,7 +491,7 @@ function countdownFrame(){
     var spd=progress<.3?"var(--text)":progress<.7?"#D94F8F":"#D94F4F";
     disp.innerHTML='<span style="color:'+spd+'">'+displayed.toFixed(2)+'</span><span style="font-size:16px;color:var(--sub)">s</span>';
   }
-  if(!window._lastSpecBroadcast||performance.now()-window._lastSpecBroadcast>250){window._lastSpecBroadcast=performance.now();emitState({mode:"countdown",state:"running",target:room.roundData.targetTime})}
+  if(!window._lastSpecBroadcast||performance.now()-window._lastSpecBroadcast>250){window._lastSpecBroadcast=performance.now();emitState({mode:"countdown",state:"running",target:room.roundData.targetTime,periodic:true,displayValue:displayed.toFixed(2),progress:progress})}
   if(progress>=1){
     window._cd="done";stopTension();sfxBad();vbFail();screenShake();
     var tgt=room.roundData.targetTime;
