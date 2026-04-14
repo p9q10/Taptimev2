@@ -568,8 +568,8 @@ function renderGameOver(){submitted=false;sfxWin();vb([40,20,40,20,40,20,80]);st
 /* ══ KLASSIKER MODE — SOLO GAME ══ */
 /* ══════════════════════════════════════════════════════ */
 var _k={running:false,score:0,combo:0,maxCombo:0,highscore:0,objects:[],idCounter:0,
-  spawnTimer:null,frame:null,lastTick:0,speed:300,speedDir:1,speedTimer:null,
-  fallSpeed:280,area:null,beatPhase:0};
+  spawnTimer:null,frame:null,lastTick:0,speed:600,speedTimer:null,
+  fallSpeed:220,area:null,beatPhase:0,pattern:"straight",difficulty:0};
 
 function kLoadHigh(){try{_k.highscore=parseInt(localStorage.getItem("t2t_hi"))||0}catch(e){_k.highscore=0}}
 function kSaveHigh(){try{localStorage.setItem("t2t_hi",_k.highscore)}catch(e){}}
@@ -634,7 +634,8 @@ function klassikerCountdown(){
 /* ── MAIN GAME ── */
 function klassikerPlay(){
   _k.running=true;_k.score=0;_k.combo=0;_k.maxCombo=0;_k.objects=[];_k.idCounter=0;
-  _k.speed=300;_k.speedDir=1;_k.beatPhase=0;_k.lastTick=performance.now();
+  _k.speed=600;_k.beatPhase=0;_k.lastTick=performance.now();
+  _k.difficulty=0;_k.pattern="straight";_k.fallSpeed=220;
   kLoadHigh();
 
   $("app").innerHTML=
@@ -650,7 +651,6 @@ function klassikerPlay(){
   _k.area=$("kArea");
   kSpawnObject();
   _k.spawnTimer=setTimeout(kSpawnLoop,_k.speed);
-  _k.speedTimer=setInterval(kChangeSpeed,2000+Math.random()*2000);
   _k.frame=requestAnimationFrame(kGameLoop);
 }
 
@@ -658,15 +658,18 @@ function kSpawnLoop(){
   if(!_k.running)return;
   kSpawnObject();
   kBeat();
+  kUpdateDifficulty();
   _k.spawnTimer=setTimeout(kSpawnLoop,_k.speed);
 }
 
-function kChangeSpeed(){
-  if(!_k.running)return;
-  _k.speed+=(Math.random()>.5?-30:30)*_k.speedDir;
-  if(_k.speed<100){_k.speed=100;_k.speedDir=-1}
-  if(_k.speed>300){_k.speed=300;_k.speedDir=1}
-  if(Math.random()>.7)_k.speedDir*=-1;
+function kUpdateDifficulty(){
+  var s=_k.score;
+  if(s<10){_k.speed=600-s*15;_k.fallSpeed=220;_k.pattern="straight"}
+  else if(s<25){_k.speed=450-(s-10)*12;_k.fallSpeed=260;_k.pattern="scatter"}
+  else if(s<45){_k.speed=270-(s-25)*5;_k.fallSpeed=300;var r=Math.random();_k.pattern=r>.5?"scurve":"scatter"}
+  else if(s<70){_k.speed=170-(s-45)*3;_k.fallSpeed=340;var r2=Math.random();_k.pattern=r2>.6?"scurve":r2>.3?"zigzag":"scatter"}
+  else{_k.speed=Math.max(50,100-Math.floor((s-70)/10)*5);_k.fallSpeed=380;var r3=Math.random();_k.pattern=r3>.5?"scurve":r3>.25?"zigzag":"scatter"}
+  if(_k.speed<50)_k.speed=50;
 }
 
 function kSpawnObject(){
@@ -675,7 +678,14 @@ function kSpawnObject(){
   var isGreen=Math.random()>.25;
   var sz=68;
   var areaW=_k.area.offsetWidth;
-  var x=Math.max(10,Math.min(areaW-sz-10,(areaW-sz)/2+Math.round((Math.random()-.5)*60)));
+  var cx=(areaW-sz)/2;
+  var x,pat=_k.pattern;
+
+  if(pat==="straight"){x=cx+Math.round((Math.random()-.5)*20)}
+  else if(pat==="scatter"){x=Math.max(6,Math.min(areaW-sz-6,Math.round(Math.random()*(areaW-sz))))}
+  else if(pat==="scurve"){x=cx}
+  else if(pat==="zigzag"){x=id%2===0?Math.max(6,cx-80+Math.round(Math.random()*20)):Math.min(areaW-sz-6,cx+80+Math.round(Math.random()*20))}
+  else{x=cx+Math.round((Math.random()-.5)*40)}
 
   var el=document.createElement("div");
   el.setAttribute("data-kid",id);
@@ -688,7 +698,7 @@ function kSpawnObject(){
   el.addEventListener("touchstart",function(e){e.preventDefault();kTapObject(id)},{passive:false});
   el.addEventListener("mousedown",function(e){e.preventDefault();kTapObject(id)});
   _k.area.appendChild(el);
-  _k.objects.push({id:id,green:isGreen,y:-sz,el:el,alive:true,spawned:performance.now()});
+  _k.objects.push({id:id,green:isGreen,y:-sz,x:x,el:el,alive:true,spawned:performance.now(),pattern:pat,startX:x,areaW:areaW,sz:sz});
 }
 
 function kTapObject(id){
@@ -747,6 +757,23 @@ function kGameLoop(now){
     obj.y+=_k.fallSpeed*dt;
     obj.el.style.top=obj.y+"px";
 
+    if(obj.pattern==="scurve"){
+      var age=(now-obj.spawned)/1000;
+      var amp=Math.min(obj.areaW*0.3,100);
+      var nx=obj.startX+Math.sin(age*3)*amp;
+      nx=Math.max(4,Math.min(obj.areaW-obj.sz-4,nx));
+      obj.el.style.left=nx+"px";
+    }else if(obj.pattern==="zigzag"){
+      var age2=(now-obj.spawned)/1000;
+      var period=0.4;
+      var phase=((age2/period)%2);
+      var lerp=phase<1?phase:2-phase;
+      var left=Math.max(6,(obj.areaW-obj.sz)*0.1);
+      var right=Math.min(obj.areaW-obj.sz-6,(obj.areaW-obj.sz)*0.9);
+      var nx2=left+(right-left)*lerp;
+      obj.el.style.left=nx2+"px";
+    }
+
     if(obj.y>areaH+10){
       obj.alive=false;
       if(obj.el.parentNode)obj.el.parentNode.removeChild(obj.el);
@@ -761,7 +788,6 @@ function kGameOver(){
   _k.running=false;
   cancelAnimationFrame(_k.frame);
   clearTimeout(_k.spawnTimer);
-  clearInterval(_k.speedTimer);
 
   var isNew=_k.score>=_k.highscore&&_k.score>0;
   if(isNew)kHighSfx();else sfxBad();
