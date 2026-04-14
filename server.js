@@ -86,7 +86,7 @@ function fullReset(room){
   clearTimers(room);
   room.currentRound=0;room.currentPhaseRound=0;room.subs={};room.teamSubs={};
   room.results=null;room.finalScores=null;room.roundData=null;room.mode=null;
-  room.scores={};room.phaseScores={};room.modeHistory=[];
+  room.scores={};room.phaseScores={};room.modeHistory=[];room.zeitStartedAt=null;
   room.players.forEach(p=>{room.scores[p.id]=0;room.phaseScores[p.id]=0;p.eliminated=false});
 }
 
@@ -162,7 +162,9 @@ io.on("connection",sk=>{
   // After spin animation → begin playing
   sk.on("beginPlay",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
-    room.phase="playing";bc(room);
+    room.phase="playing";
+    if(room.mode==="timesense")room.zeitStartedAt=Date.now();
+    bc(room);
     scheduleZeitStop(room);
   });
 
@@ -238,6 +240,15 @@ io.on("connection",sk=>{
     const f=findRoom(sk.id);if(!f)return;
     const s=roomState(f.room);
     sk.emit("sync",{...s,myId:sk.id});
+    // Re-emit zeitStop if it should have already fired for this client
+    if(f.room.phase==="playing"&&f.room.mode==="timesense"&&f.room.roundData&&f.room.zeitStartedAt){
+      const wait=(f.room.roundData.waitDelay||3)*1000;
+      const dur=(f.room.roundData.hiddenDuration||3)*1000;
+      const elapsed=Date.now()-f.room.zeitStartedAt;
+      if(elapsed>=wait+dur){
+        sk.emit("zeitStop",{actual:f.room.roundData.hiddenDuration});
+      }
+    }
   });
 
   // Rejoin after socket reconnect (new socket ID)
