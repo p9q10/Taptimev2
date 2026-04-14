@@ -237,36 +237,17 @@ function lcdPanel(text,sz){return'<div style="display:inline-block;padding:10px 
 /* ══ HOME ══ */
 function home(){so.emit("leave");room=null;window._lastRoomCode=null;fullClientReset();
 $("app").innerHTML=
-'<div style="animation:up .6s ease;padding-top:6px">'+
-'<div class="ct" style="margin-bottom:32px">'+
+'<div style="animation:up .6s ease;padding-top:20px">'+
+'<div class="ct" style="margin-bottom:40px">'+
   '<div style="margin:0 auto 16px">'+watchSVG(80)+'</div>'+
   '<div style="font-family:var(--f);font-size:28px;font-weight:900;color:var(--gold);letter-spacing:4px">TIME<span style="color:#D94F4F;font-size:1.3em">2</span>TAP</div>'+
   '<div style="font-size:11px;color:var(--sub);letter-spacing:5px;margin-top:4px;font-weight:700">PARTY GAME</div>'+
 '</div>'+
-'<div style="display:flex;gap:18px;justify-content:center">'+
-  '<button onclick="initAudio();selFormat=\'ffa\';setupRoom()" style="display:flex;flex-direction:column;align-items:center;gap:12px;background:none;border:none;cursor:pointer;padding:0;font-family:var(--f)">'+
-    '<div style="position:relative;width:130px;height:130px">'+
-      '<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(232,121,58,.15);animation:ringExpand 3.5s ease infinite"></div>'+
-      '<div style="position:absolute;inset:0;width:130px;height:130px;border-radius:50%;background:var(--surf);box-shadow:0 5px 28px rgba(232,121,58,.18);border:3.5px solid var(--gold)">'+
-        '<div style="position:absolute;inset:3px;border-radius:50%;background:#FFF3E8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">'+
-          '<div style="font-size:34px">⚔️</div>'+
-          '<div style="font-size:12px;font-weight:900;color:var(--gold);letter-spacing:1px">ALLE VS ALLE</div>'+
-        '</div>'+
-      '</div>'+
-    '</div>'+
-    '<div style="font-size:11px;color:var(--sub);font-weight:600">Elimination</div>'+
-  '</button>'+
-  '<button onclick="initAudio();selFormat=\'teams\';setupRoom()" style="display:flex;flex-direction:column;align-items:center;gap:12px;background:none;border:none;cursor:pointer;padding:0;font-family:var(--f)">'+
-    '<div style="position:relative;width:130px;height:130px">'+
-      '<div style="position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(91,155,213,.15);animation:ringExpand 3.5s ease 1s infinite"></div>'+
-      '<div style="position:absolute;inset:0;width:130px;height:130px;border-radius:50%;background:var(--surf);box-shadow:0 5px 28px rgba(91,155,213,.18);border:3.5px solid var(--blue)">'+
-        '<div style="position:absolute;inset:3px;border-radius:50%;background:#EFF6FF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">'+
-          '<div style="font-size:34px">🤝</div>'+
-          '<div style="font-size:12px;font-weight:900;color:var(--blue);letter-spacing:1px">TEAM VS TEAM</div>'+
-        '</div>'+
-      '</div>'+
-    '</div>'+
-    '<div style="font-size:11px;color:var(--sub);font-weight:600">Zusammen</div>'+
+'<div class="ct">'+
+  '<button onclick="initAudio();setupRoom()" style="position:relative;width:180px;height:180px;border-radius:50%;background:linear-gradient(180deg,#4A4A4A,#2D2D2D);border:4px solid var(--gold);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 0 #1a1a1a,0 10px 36px rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.1);transition:transform .12s,box-shadow .12s;font-family:var(--f)">'+
+    '<div style="font-size:36px">🎉</div>'+
+    '<div style="font-size:16px;font-weight:900;color:#fff;letter-spacing:3px">PARTY</div>'+
+    '<div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:2px">MODUS</div>'+
   '</button>'+
 '</div></div>';}
 
@@ -278,7 +259,7 @@ renderAvatars()}
 
 function renderAvatars(){var g=$("avs");if(!g)return;g.innerHTML=AV.map(function(a){var sel=myAvatar===a;var d=AVD[a];return'<div onclick="myAvatar=\''+a+'\';renderAvatars()" style="width:64px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border-radius:16px;border:'+(sel?"2.5px solid var(--gold)":"2px solid transparent")+';background:'+(sel?"rgba(232,121,58,.06)":"transparent")+';cursor:pointer;transition:all .2s;box-shadow:'+(sel?"0 2px 12px rgba(232,121,58,.15)":"none")+'">'+avHTML(a,44)+'<div style="font-size:8px;color:'+(sel?"var(--gold)":"var(--sub)")+';font-weight:700;letter-spacing:.3px;white-space:nowrap;font-family:var(--f)">'+d.n+'</div></div>'}).join("")}
 
-function doCreate(){var n=$("nm");if(!n||!n.value.trim()){$("err").textContent="Name eingeben!";return}myName=n.value.trim();fullClientReset();so.emit("create",{name:myName,avatar:myAvatar,format:selFormat,roundsPerPhase:3},function(r){if(!r.ok)$("err").textContent=r.err})}
+function doCreate(){var n=$("nm");if(!n||!n.value.trim()){$("err").textContent="Name eingeben!";return}myName=n.value.trim();fullClientReset();so.emit("create",{name:myName,avatar:myAvatar,format:"ffa",roundsPerPhase:3},function(r){if(!r.ok)$("err").textContent=r.err})}
 
 function joinScreen(){var n=$("nm");if(!n||!n.value.trim()){$("err").textContent="Name eingeben!";return}myName=n.value.trim();
 $("app").innerHTML=
@@ -287,7 +268,60 @@ $("app").innerHTML=
 function doJoin(){var c=$("ji");if(!c||c.value.length<4){$("jerr").textContent="4-stelliger Code!";return}fullClientReset();so.emit("join",{code:c.value,name:myName,avatar:myAvatar},function(r){if(!r.ok)$("jerr").textContent=r.err})}
 
 /* ══ LOBBY ══ */
-function renderLobby(){var isHost=room.hostId===room.myId,ps=room.players||[];var html='<div style="animation:up .4s ease"><div class="ct" style="margin-bottom:24px"><button onclick="try{navigator.clipboard.writeText(\''+room.code+'\')}catch(e){}" style="display:inline-block;padding:0;border:none;background:none;cursor:pointer"><div style="position:relative;width:140px;height:140px;margin:0 auto"><div style="position:absolute;inset:0;border-radius:50%;background:#fff;border:3px solid var(--gold);box-shadow:0 4px 20px rgba(232,121,58,.12)"></div><div style="position:absolute;inset:8px;border-radius:50%;background:#FFF3E8;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:9px;color:var(--sub);letter-spacing:3px;font-weight:700;margin-bottom:6px">CODE · KOPIEREN</div><div style="font-family:var(--mono);font-size:28px;color:var(--gold);letter-spacing:6px;font-weight:500">'+room.code+'</div></div></div></button></div><div class="cd" style="margin-bottom:16px"><div class="lb">'+(room.format==="ffa"?"⚔️ Alle vs Alle":"🤝 Team vs Team")+'</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;justify-content:center">';ps.forEach(function(p){html+='<div class="pchip" style="opacity:'+(p.connected?'1':'.3')+'">'+avHTML(p.avatar,24)+'<span style="font-size:12px;font-weight:700;color:'+(p.id===room.myId?"var(--gold)":"var(--text)")+'">'+p.name+(p.id===room.myId?' <span style="font-size:8px;color:var(--green);background:rgba(93,174,114,.1);padding:2px 8px;border-radius:999px;letter-spacing:1px;font-weight:800">DU</span>':'')+'</span></div>'});html+='</div></div>';if(room.format==="teams"){var myP=ps.find(function(p){return p.id===room.myId});var mt=myP?myP.team:null;html+='<div class="cd" style="margin-bottom:16px"><div class="lb">Dein Team</div><div style="display:flex;gap:12px;margin-top:10px"><button onclick="so.emit(\'setTeam\',{team:\'a\'})" style="flex:1;padding:15px;border-radius:999px;border:'+(mt==="a"?"2.5px solid var(--gold)":"1px solid var(--border)")+';background:'+(mt==="a"?"rgba(232,121,58,.06)":"#fff")+';color:'+(mt==="a"?"var(--gold)":"var(--sub)")+';font-size:13px;font-weight:800;cursor:pointer;font-family:var(--f);letter-spacing:1px">Team A 🟠</button><button onclick="so.emit(\'setTeam\',{team:\'b\'})" style="flex:1;padding:15px;border-radius:999px;border:'+(mt==="b"?"2.5px solid var(--blue)":"1px solid var(--border)")+';background:'+(mt==="b"?"rgba(91,155,213,.06)":"#fff")+';color:'+(mt==="b"?"var(--blue)":"var(--sub)")+';font-size:13px;font-weight:800;cursor:pointer;font-family:var(--f);letter-spacing:1px">Team B 🔵</button></div></div>'}if(isHost){html+='<div class="cd" style="margin-bottom:16px"><div class="lb">Runden pro Phase</div><div style="display:flex;gap:10px;margin-top:10px">';[2,3,5].forEach(function(r){var sel=room.roundsPerPhase===r;html+='<div onclick="so.emit(\'updateSettings\',{roundsPerPhase:'+r+'})" style="flex:1;padding:15px;cursor:pointer;text-align:center;border-radius:999px;border:'+(sel?"2.5px solid var(--gold)":"1px solid var(--border)")+';background:'+(sel?"rgba(232,121,58,.06)":"#fff")+';font-family:var(--mono);font-size:22px;color:'+(sel?"var(--gold)":"var(--sub)")+';font-weight:500">'+r+'</div>'});html+='</div></div><div class="ct"><button class="btn" onclick="so.emit(\'start\')"'+(ps.filter(function(p){return p.connected}).length>=2?'':' disabled')+'>Spiel starten</button></div>'}else{html+='<div class="ct" style="margin-top:24px"><div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div></div>'}html+='<div class="ct" style="margin-top:24px"><button class="btn2" onclick="home()">← Verlassen</button></div></div>';$("app").innerHTML=html}
+function toggleMode(m){
+var sm=room.selectedModes||["bullseye","timesense","memory","reaction","countdown"];
+var idx=sm.indexOf(m);
+if(idx>=0&&sm.length>1)sm.splice(idx,1);
+else if(idx<0)sm.push(m);
+so.emit("updateSettings",{selectedModes:sm})}
+
+function renderLobby(){var isHost=room.hostId===room.myId,ps=room.players||[];
+var wh=room.wheelEnabled!==false;
+var sm=room.selectedModes||["bullseye","timesense","memory","reaction","countdown"];
+var html='<div style="animation:up .4s ease">';
+/* CODE */
+html+='<div class="ct" style="margin-bottom:20px"><button onclick="try{navigator.clipboard.writeText(\''+room.code+'\')}catch(e){}" style="display:inline-block;padding:0;border:none;background:none;cursor:pointer"><div style="position:relative;width:120px;height:120px;margin:0 auto"><div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,#4A4A4A,#2D2D2D);border:3.5px solid var(--gold);box-shadow:0 5px 0 #1a1a1a,0 8px 28px rgba(0,0,0,.2)"></div><div style="position:absolute;inset:8px;border-radius:50%;background:#3A3A3A;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:8px;color:var(--gold);letter-spacing:3px;font-weight:700;margin-bottom:4px">CODE · TAP</div><div style="font-family:var(--mono);font-size:24px;color:#fff;letter-spacing:5px;font-weight:500">'+room.code+'</div></div></div></button></div>';
+/* SPIELER */
+html+='<div class="cd" style="margin-bottom:14px"><div class="lb">Spieler · '+ps.filter(function(p){return p.connected}).length+'</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;justify-content:center">';
+ps.forEach(function(p){html+='<div class="pchip" style="opacity:'+(p.connected?'1':'.3')+'">'+avHTML(p.avatar,24)+'<span style="font-size:12px;font-weight:700;color:'+(p.id===room.myId?"var(--gold)":"var(--text)")+'">'+p.name+(p.id===room.myId?' <span style="font-size:7px;color:var(--green);background:rgba(93,174,114,.12);padding:2px 6px;border-radius:999px;font-weight:800">DU</span>':'')+'</span></div>'});
+html+='</div></div>';
+if(isHost){
+/* MODUS */
+html+='<div class="cd" style="margin-bottom:14px"><div class="lb">Spielmodus</div><div style="display:flex;gap:10px;margin-top:8px">';
+var ffa=room.format==="ffa";
+html+='<div onclick="so.emit(\'updateSettings\',{format:\'ffa\'})" style="flex:1;padding:14px 8px;cursor:pointer;text-align:center;border-radius:20px;border:'+(ffa?"2.5px solid var(--gold)":"1.5px solid var(--border)")+';background:'+(ffa?"rgba(232,121,58,.06)":"var(--surf)")+';transition:all .2s"><div style="font-size:22px;margin-bottom:4px">⚔️</div><div style="font-size:10px;font-weight:800;color:'+(ffa?"var(--gold)":"var(--sub)")+';letter-spacing:1px">ALLE VS ALLE</div></div>';
+html+='<div onclick="so.emit(\'updateSettings\',{format:\'teams\'})" style="flex:1;padding:14px 8px;cursor:pointer;text-align:center;border-radius:20px;border:'+(!ffa?"2.5px solid var(--blue)":"1.5px solid var(--border)")+';background:'+(!ffa?"rgba(91,155,213,.06)":"var(--surf)")+';transition:all .2s"><div style="font-size:22px;margin-bottom:4px">🤝</div><div style="font-size:10px;font-weight:800;color:'+(!ffa?"var(--blue)":"var(--sub)")+';letter-spacing:1px">TEAM VS TEAM</div></div>';
+html+='</div></div>';
+/* RUNDEN */
+html+='<div class="cd" style="margin-bottom:14px"><div class="lb">Runden</div><div style="display:flex;gap:8px;margin-top:8px">';
+[3,5,10].forEach(function(r){var sel=room.roundsPerPhase===r;
+html+='<div onclick="so.emit(\'updateSettings\',{roundsPerPhase:'+r+'})" style="flex:1;padding:14px;cursor:pointer;text-align:center;border-radius:20px;border:'+(sel?"2.5px solid var(--gold)":"1.5px solid var(--border)")+';background:'+(sel?"rgba(232,121,58,.06)":"var(--surf)")+';font-family:var(--mono);font-size:20px;color:'+(sel?"var(--gold)":"var(--sub)")+';font-weight:500;transition:all .2s">'+r+'</div>'});
+html+='</div></div>';
+/* DREHRAD */
+html+='<div class="cd" style="margin-bottom:14px"><div class="lb">Drehrad</div><div style="display:flex;gap:10px;margin-top:8px">';
+html+='<div onclick="so.emit(\'updateSettings\',{wheelEnabled:true})" style="flex:1;padding:14px 8px;cursor:pointer;text-align:center;border-radius:20px;border:'+(wh?"2.5px solid var(--green)":"1.5px solid var(--border)")+';background:'+(wh?"rgba(93,174,114,.06)":"var(--surf)")+';transition:all .2s"><div style="font-size:20px;margin-bottom:4px">🎡</div><div style="font-size:10px;font-weight:800;color:'+(wh?"var(--green)":"var(--sub)")+';letter-spacing:1px">ZUFALL</div></div>';
+html+='<div onclick="so.emit(\'updateSettings\',{wheelEnabled:false})" style="flex:1;padding:14px 8px;cursor:pointer;text-align:center;border-radius:20px;border:'+(!wh?"2.5px solid var(--gold)":"1.5px solid var(--border)")+';background:'+(!wh?"rgba(232,121,58,.06)":"var(--surf)")+';transition:all .2s"><div style="font-size:20px;margin-bottom:4px">🎯</div><div style="font-size:10px;font-weight:800;color:'+(!wh?"var(--gold)":"var(--sub)")+';letter-spacing:1px">WÄHLEN</div></div>';
+html+='</div>';
+/* MODE PICKER (when wheel off) */
+if(!wh){
+html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;justify-content:center">';
+["bullseye","timesense","memory","reaction","countdown"].forEach(function(mid){
+var mi=MI[mid];var on=sm.indexOf(mid)>=0;
+html+='<div onclick="toggleMode(\''+mid+'\')" style="padding:10px 14px;border-radius:16px;cursor:pointer;display:flex;align-items:center;gap:6px;border:'+(on?"2px solid "+mi.color:"1.5px solid var(--border)")+';background:'+(on?mi.color+"10":"var(--surf)")+';transition:all .2s"><span style="font-size:16px">'+mi.icon+'</span><span style="font-size:10px;font-weight:800;color:'+(on?mi.color:"var(--sub)")+';letter-spacing:.5px">'+mi.name.toUpperCase()+'</span></div>'});
+html+='</div>'}
+html+='</div>';
+}else{
+/* NON-HOST: show settings read-only */
+html+='<div class="cd" style="margin-bottom:14px"><div style="display:flex;justify-content:space-around"><div class="ct"><div style="font-size:18px;margin-bottom:4px">'+(room.format==="ffa"?"⚔️":"🤝")+'</div><div style="font-size:9px;color:var(--sub);font-weight:700">'+(room.format==="ffa"?"Alle vs Alle":"Team vs Team")+'</div></div><div class="ct"><div style="font-family:var(--mono);font-size:18px;color:var(--gold);font-weight:500">'+room.roundsPerPhase+'</div><div style="font-size:9px;color:var(--sub);font-weight:700">Runden</div></div><div class="ct"><div style="font-size:18px;margin-bottom:4px">'+(wh?"🎡":"🎯")+'</div><div style="font-size:9px;color:var(--sub);font-weight:700">'+(wh?"Zufall":"Gewählt")+'</div></div></div></div>';
+}
+/* TEAM SELECTOR */
+if(room.format==="teams"){var myP=ps.find(function(p){return p.id===room.myId});var mt=myP?myP.team:null;
+html+='<div class="cd" style="margin-bottom:14px"><div class="lb">Dein Team</div><div style="display:flex;gap:10px;margin-top:8px"><button onclick="so.emit(\'setTeam\',{team:\'a\'})" style="flex:1;padding:14px;border-radius:20px;border:'+(mt==="a"?"2.5px solid var(--gold)":"1.5px solid var(--border)")+';background:'+(mt==="a"?"rgba(232,121,58,.06)":"var(--surf)")+';color:'+(mt==="a"?"var(--gold)":"var(--sub)")+';font-size:13px;font-weight:800;cursor:pointer;font-family:var(--f);letter-spacing:1px">Team A 🟠</button><button onclick="so.emit(\'setTeam\',{team:\'b\'})" style="flex:1;padding:14px;border-radius:20px;border:'+(mt==="b"?"2.5px solid var(--blue)":"1.5px solid var(--border)")+';background:'+(mt==="b"?"rgba(91,155,213,.06)":"var(--surf)")+';color:'+(mt==="b"?"var(--blue)":"var(--sub)")+';font-size:13px;font-weight:800;cursor:pointer;font-family:var(--f);letter-spacing:1px">Team B 🔵</button></div></div>'}
+/* START */
+if(isHost){html+='<div class="ct" style="margin-top:6px"><button class="btn" onclick="so.emit(\'start\')"'+(ps.filter(function(p){return p.connected}).length>=2?'':' disabled')+'>Spiel starten</button></div>'}
+else{html+='<div class="ct" style="margin-top:16px"><div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div></div>'}
+html+='<div class="ct" style="margin-top:20px"><button class="btn2" onclick="home()">← Verlassen</button></div></div>';
+$("app").innerHTML=html}
 
 /* ══ PRE-GAME ══ */
 function renderPreGame(){var ps=room.players.filter(function(p){return p.connected});var isHost=room.hostId===room.myId;$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:14px"><div style="font-family:var(--f);font-size:22px;font-weight:900;color:var(--gold);letter-spacing:4px;margin-bottom:4px">TIME<span style="color:#D94F4F;font-size:1.3em">2</span>TAP</div><div style="font-size:10px;color:var(--sub);margin-bottom:24px;font-weight:700;letter-spacing:2px">'+(room.format==="ffa"?"ALLE GEGEN ALLE":"TEAM VS TEAM")+'</div><div class="cd" style="margin-bottom:22px;text-align:left"><div style="font-size:12px;color:var(--sub);line-height:1.8;font-weight:600">Jede Runde wird ein zufälliges Spiel gedreht. Bullseye, Zeitgefühl, Memory, Reaktion oder Countdown — seid bereit für alles!</div></div><div class="cd" style="margin-bottom:24px"><div class="lb">Spieler</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:14px">'+ps.map(function(p){return'<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--border);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)">'+avHTML(p.avatar,40)+'</div><div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">'+p.name+'</div></div>'}).join('')+'</div></div>'+(isHost?'<button class="btn" onclick="so.emit(\'startFirstRound\')">Los geht\'s</button>':'<div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div>')+'</div>'}
@@ -296,6 +330,26 @@ function renderPreGame(){var ps=room.players.filter(function(p){return p.connect
 function renderSpin(){
 var mode=room.mode;var m=MI[mode];var isHost=room.hostId===room.myId;
 var active=room.players.filter(function(p){return!p.eliminated&&p.connected});
+var wh=room.wheelEnabled!==false;
+
+if(!wh){
+/* NO WHEEL — quick mode reveal */
+$("app").innerHTML=
+'<div class="ct" style="animation:pop .5s ease;padding-top:20px">'+
+'<div class="lb">Runde '+room.currentRound+'</div>'+
+'<div style="font-size:12px;color:var(--sub);margin-bottom:24px;font-weight:700">'+active.length+' Spieler</div>'+
+'<div style="position:relative;width:100px;height:100px;margin:0 auto 20px">'+
+  '<div style="position:absolute;inset:0;border-radius:50%;background:'+m.color+';opacity:.1;animation:ringExpand 1.5s ease infinite"></div>'+
+  '<div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,'+m.color+'cc,'+m.color+');display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 5px 0 rgba(0,0,0,.15),0 8px 28px '+m.color+'40">'+m.icon+'</div>'+
+'</div>'+
+'<div style="font-family:var(--f);font-size:18px;font-weight:900;color:'+m.color+';letter-spacing:3px">'+m.name.toUpperCase()+'</div>'+
+'<div style="font-size:12px;color:var(--sub);margin-top:10px;line-height:1.7;max-width:280px;margin-left:auto;margin-right:auto;font-weight:600">'+m.desc+'</div>'+
+(isHost?'<button class="btn" style="margin-top:24px" onclick="so.emit(\'beginPlay\')">Start!</button>':'<div style="font-size:11px;color:var(--sub);margin-top:22px;font-weight:700;animation:breathe 2s ease infinite">Warte auf Host...</div>')+
+'</div>';
+sfxGo();vb([60,30,60,30,100]);
+return}
+
+/* WHEEL ENABLED — normal spin */
 var colors=["#E8793A","#5B9BD5","#5DAE72","#E8A035","#D94F8F"];
 var icons=["🎯","🧠","💾","⚡","⏱"];
 var modeIdx=SEGS.findIndex(function(s){return s.id===mode});
