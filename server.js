@@ -8,10 +8,11 @@ function mkCode(){let c;do{c="";for(let i=0;i<4;i++)c+=CH[Math.floor(Math.random
 function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 const GAME_MODES=["bullseye","timesense","memory","reaction","countdown"];
 function pickMode(room){
+  var pool=room.selectedModes&&room.selectedModes.length>0?room.selectedModes:GAME_MODES;
   var h=room.modeHistory||[];
   var attempts=0,mode;
-  do{mode=GAME_MODES[Math.floor(Math.random()*GAME_MODES.length)];attempts++}
-  while(attempts<3&&h.length>=2&&h[h.length-1]===mode&&h[h.length-2]===mode);
+  do{mode=pool[Math.floor(Math.random()*pool.length)];attempts++}
+  while(attempts<3&&pool.length>1&&h.length>=2&&h[h.length-1]===mode&&h[h.length-2]===mode);
   h.push(mode);if(h.length>5)h.shift();
   room.modeHistory=h;
   return mode;
@@ -41,6 +42,7 @@ function genRoundData(mode,format){
 function makeRoom(code,sk,name,avatar,format,roundsPerPhase){
   return{code,phase:"lobby",mode:null,format:format||"ffa",
     roundsPerPhase:roundsPerPhase||3,currentRound:0,currentPhaseRound:0,
+    wheelEnabled:true,selectedModes:[...GAME_MODES],
     players:[{id:sk.id,name,avatar,team:null,connected:true,eliminated:false}],
     hostId:sk.id,roundData:null,results:null,subs:{},teamSubs:{},
     scores:{},phaseScores:{},finalScores:null,zeitTimers:[],modeHistory:[],playerStates:{}}
@@ -55,7 +57,8 @@ function roomState(room){
     players:room.players.map(p=>({id:p.id,name:p.name,avatar:p.avatar,team:p.team,connected:p.connected,eliminated:p.eliminated})),
     results:room.results,finalScores:room.finalScores,teamScores:room.teamScores||null,
     scores:room.scores,phaseScores:room.phaseScores,
-    hostId:room.hostId,subs:subMap,teamSubs:tSubMap};
+    hostId:room.hostId,subs:subMap,teamSubs:tSubMap,
+    wheelEnabled:room.wheelEnabled!==false,selectedModes:room.selectedModes||GAME_MODES};
 }
 function bc(room){const s=roomState(room);room.players.forEach(p=>{io.to(p.id).emit("sync",{...s,myId:p.id})})}
 function findRoom(sid){for(const[c,r]of rooms){const p=r.players.find(x=>x.id===sid);if(p)return{code:c,room:r,player:p}}return null}
@@ -145,16 +148,21 @@ io.on("connection",sk=>{
   });
 
   sk.on("setTeam",({team})=>{const f=findRoom(sk.id);if(!f)return;f.player.team=team;bc(f.room)});
-  sk.on("updateSettings",({format,roundsPerPhase})=>{
+  sk.on("updateSettings",({format,roundsPerPhase,wheelEnabled,selectedModes})=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
-    if(format)room.format=format;if(roundsPerPhase)room.roundsPerPhase=roundsPerPhase;bc(room);
+    if(format)room.format=format;
+    if(roundsPerPhase)room.roundsPerPhase=roundsPerPhase;
+    if(wheelEnabled!==undefined)room.wheelEnabled=wheelEnabled;
+    if(selectedModes&&Array.isArray(selectedModes)&&selectedModes.length>0)room.selectedModes=selectedModes;
+    bc(room);
   });
 
   sk.on("start",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
     const connected=room.players.filter(p=>p.connected);if(connected.length<2)return;
     if(room.format==="teams")connected.forEach((p,i)=>{if(!p.team)p.team=i%2===0?"a":"b"});
-    fullReset(room);room.phase="pregame";bc(room);
+    fullReset(room);
+    spinForRound(room);
   });
 
   // After pregame → first spin
