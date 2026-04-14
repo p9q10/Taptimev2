@@ -549,7 +549,7 @@ function renderGameOver(){submitted=false;sfxWin();vb([40,20,40,20,40,20,80]);st
 /* ══ KLASSIKER MODE — SOLO GAME ══ */
 /* ══════════════════════════════════════════════════════ */
 var _k={running:false,score:0,combo:0,maxCombo:0,highscore:0,objects:[],idCounter:0,
-  spawnTimer:null,frame:null,lastTick:0,speed:500,speedDir:1,speedTimer:null,
+  spawnTimer:null,frame:null,lastTick:0,speed:300,speedDir:1,speedTimer:null,
   fallSpeed:280,area:null,beatPhase:0};
 
 function kLoadHigh(){try{_k.highscore=parseInt(localStorage.getItem("t2t_hi"))||0}catch(e){_k.highscore=0}}
@@ -615,7 +615,7 @@ function klassikerCountdown(){
 /* ── MAIN GAME ── */
 function klassikerPlay(){
   _k.running=true;_k.score=0;_k.combo=0;_k.maxCombo=0;_k.objects=[];_k.idCounter=0;
-  _k.speed=500;_k.speedDir=1;_k.beatPhase=0;_k.lastTick=performance.now();
+  _k.speed=300;_k.speedDir=1;_k.beatPhase=0;_k.lastTick=performance.now();
   kLoadHigh();
 
   $("app").innerHTML=
@@ -645,8 +645,8 @@ function kSpawnLoop(){
 function kChangeSpeed(){
   if(!_k.running)return;
   _k.speed+=(Math.random()>.5?-30:30)*_k.speedDir;
-  if(_k.speed<300){_k.speed=300;_k.speedDir=-1}
-  if(_k.speed>500){_k.speed=500;_k.speedDir=1}
+  if(_k.speed<100){_k.speed=100;_k.speedDir=-1}
+  if(_k.speed>300){_k.speed=300;_k.speedDir=1}
   if(Math.random()>.7)_k.speedDir*=-1;
 }
 
