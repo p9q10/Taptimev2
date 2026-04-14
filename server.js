@@ -43,7 +43,7 @@ function makeRoom(code,sk,name,avatar,format,roundsPerPhase){
     roundsPerPhase:roundsPerPhase||3,currentRound:0,currentPhaseRound:0,
     players:[{id:sk.id,name,avatar,team:null,connected:true,eliminated:false}],
     hostId:sk.id,roundData:null,results:null,subs:{},teamSubs:{},
-    scores:{},phaseScores:{},finalScores:null,zeitTimers:[],modeHistory:[]}
+    scores:{},phaseScores:{},finalScores:null,zeitTimers:[],modeHistory:[],playerStates:{}}
 }
 
 function roomState(room){
@@ -86,7 +86,7 @@ function fullReset(room){
   clearTimers(room);
   room.currentRound=0;room.currentPhaseRound=0;room.subs={};room.teamSubs={};
   room.results=null;room.finalScores=null;room.roundData=null;room.mode=null;
-  room.scores={};room.phaseScores={};room.modeHistory=[];room.zeitStartedAt=null;room.teamScores=null;
+  room.scores={};room.phaseScores={};room.modeHistory=[];room.zeitStartedAt=null;room.teamScores=null;room.playerStates={};
   room.players.forEach(p=>{room.scores[p.id]=0;room.phaseScores[p.id]=0;p.eliminated=false});
 }
 
@@ -99,7 +99,7 @@ function spinForRound(room){
   room.currentRound++;room.currentPhaseRound++;
   room.mode=pickMode(room);
   room.roundData=genRoundData(room.mode,room.format);
-  room.subs={};room.teamSubs={};room.results=null;room.teamScores=null;
+  room.subs={};room.teamSubs={};room.results=null;room.teamScores=null;room.playerStates={};
   room.phase="spin";bc(room);
 }
 
@@ -256,6 +256,28 @@ io.on("connection",sk=>{
   sk.on("playAgain",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
     fullReset(room);room.phase="lobby";bc(room);
+  });
+
+  // Spectator: eliminated player selects who to watch
+  sk.on("spectate",({targetPid})=>{
+    const f=findRoom(sk.id);if(!f||!f.player.eliminated)return;
+    f.player.spectating=targetPid||null;
+    // Send current stored state of target
+    if(targetPid&&f.room.playerStates[targetPid]){
+      sk.emit("spectatorUpdate",f.room.playerStates[targetPid]);
+    }
+  });
+
+  // Active player broadcasts gameplay state for spectators
+  sk.on("playerState",(state)=>{
+    const f=findRoom(sk.id);if(!f||f.player.eliminated)return;
+    const ps={...state,pid:sk.id,name:f.player.name,avatar:f.player.avatar};
+    f.room.playerStates[sk.id]=ps;
+    f.room.players.forEach(p=>{
+      if(p.eliminated&&p.connected&&p.spectating===sk.id){
+        io.to(p.id).emit("spectatorUpdate",ps);
+      }
+    });
   });
 
   // Resume/reconnect: client requests fresh state
