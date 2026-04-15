@@ -189,22 +189,21 @@ io.on("connection",sk=>{
     const active=activePlayers(room);
     if(Object.keys(room.subs).length>=active.length){
       const sorted=Object.values(room.subs).sort((a,b)=>a.value-b.value);
+      const coinTable=[10,8,6,5,4,3,2,1];
+      // Give coins to all players by rank
+      sorted.forEach((r,i)=>{
+        const coins=i<coinTable.length?coinTable[i]:1;
+        r.coins=coins;
+        room.scores[r.pid]=(room.scores[r.pid]||0)+coins;
+        room.phaseScores[r.pid]=(room.phaseScores[r.pid]||0)+coins;
+      });
       if(room.format==="teams"){
+        // Calculate average coins per team
         const teamA=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="a"});
         const teamB=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="b"});
-        const sumA=teamA.reduce((s,r)=>s+r.value,0);
-        const sumB=teamB.reduce((s,r)=>s+r.value,0);
-        room.teamScores={a:sumA,b:sumB};
-        room.players.filter(p=>p.connected&&!p.eliminated).forEach(p=>{
-          const won=(p.team==="a"&&sumA<=sumB)||(p.team==="b"&&sumB<sumA);
-          room.scores[p.id]=(room.scores[p.id]||0)+(won?3:1);
-        });
-      }else{
-        sorted.forEach((r,i)=>{
-          const pts=Math.max(sorted.length-i,1);
-          room.scores[r.pid]=(room.scores[r.pid]||0)+pts;
-          room.phaseScores[r.pid]=(room.phaseScores[r.pid]||0)+pts;
-        });
+        const avgA=teamA.length?teamA.reduce((s,r)=>s+r.coins,0)/teamA.length:0;
+        const avgB=teamB.length?teamB.reduce((s,r)=>s+r.coins,0)/teamB.length:0;
+        room.teamScores={a:avgA,b:avgB};
       }
       room.results=sorted;room.phase="results";bc(room);
     }
@@ -223,14 +222,18 @@ io.on("connection",sk=>{
     const active=activePlayers(room);
     if(Object.keys(room.subs).length>=active.length){
       const sorted=Object.values(room.subs).sort((a,b)=>a.value-b.value);
-      const teamASubs=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="a"});
-      const teamBSubs=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="b"});
-      const avgA=teamASubs.length?teamASubs.reduce((s,r)=>s+r.value,0)/teamASubs.length:99;
-      const avgB=teamBSubs.length?teamBSubs.reduce((s,r)=>s+r.value,0)/teamBSubs.length:99;
-      room.players.filter(p=>p.connected&&!p.eliminated).forEach(p=>{
-        const won=(p.team==="a"&&avgA<=avgB)||(p.team==="b"&&avgB<avgA);
-        room.scores[p.id]=(room.scores[p.id]||0)+(won?3:1);
+      const coinTable=[10,8,6,5,4,3,2,1];
+      sorted.forEach((r,i)=>{
+        const coins=i<coinTable.length?coinTable[i]:1;
+        r.coins=coins;
+        room.scores[r.pid]=(room.scores[r.pid]||0)+coins;
+        room.phaseScores[r.pid]=(room.phaseScores[r.pid]||0)+coins;
       });
+      const teamA=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="a"});
+      const teamB=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="b"});
+      const avgA=teamA.length?teamA.reduce((s,r)=>s+r.coins,0)/teamA.length:0;
+      const avgB=teamB.length?teamB.reduce((s,r)=>s+r.coins,0)/teamB.length:0;
+      room.teamScores={a:avgA,b:avgB};
       room.results=sorted;room.phase="results";bc(room);
     }
   });
