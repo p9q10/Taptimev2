@@ -39,12 +39,30 @@ function genRoundData(mode,format){
   }
 }
 
+// Coin system: deviation → base coins
+function calcCoins(dev){
+  if(dev<0.050)return 100;
+  if(dev<0.100)return 75;
+  if(dev<0.200)return 50;
+  if(dev<0.500)return 30;
+  if(dev<1.000)return 15;
+  if(dev<2.000)return 5;
+  return 0;
+}
+// Bet outcome
+function calcBetResult(bet,dev){
+  if(!bet||bet==="skip")return-10;
+  var bets={easy:{w:20,t:0.200,win:60},medium:{w:50,t:0.100,win:150},hard:{w:100,t:0.050,win:300}};
+  var b=bets[bet];if(!b)return-10;
+  return dev<=b.t?b.win:-b.w;
+}
+
 function makeRoom(code,sk,name,avatar,format,roundsPerPhase){
   return{code,phase:"lobby",mode:null,format:format||"ffa",
     roundsPerPhase:roundsPerPhase||3,currentRound:0,currentPhaseRound:0,
     wheelEnabled:true,selectedModes:[...GAME_MODES],
     players:[{id:sk.id,name,avatar,team:null,connected:true,eliminated:false}],
-    hostId:sk.id,roundData:null,results:null,subs:{},teamSubs:{},
+    hostId:sk.id,roundData:null,results:null,subs:{},teamSubs:{},bets:{},
     scores:{},phaseScores:{},finalScores:null,zeitTimers:[],modeHistory:[],playerStates:{}}
 }
 
@@ -57,7 +75,7 @@ function roomState(room){
     players:room.players.map(p=>({id:p.id,name:p.name,avatar:p.avatar,team:p.team,connected:p.connected,eliminated:p.eliminated})),
     results:room.results,finalScores:room.finalScores,teamScores:room.teamScores||null,
     scores:room.scores,phaseScores:room.phaseScores,
-    hostId:room.hostId,subs:subMap,teamSubs:tSubMap,
+    hostId:room.hostId,subs:subMap,teamSubs:tSubMap,bets:room.bets||{},
     wheelEnabled:room.wheelEnabled!==false,selectedModes:room.selectedModes||GAME_MODES};
 }
 function bc(room){const s=roomState(room);room.players.forEach(p=>{io.to(p.id).emit("sync",{...s,myId:p.id})})}
@@ -87,10 +105,10 @@ function scheduleZeitStop(room){
 
 function fullReset(room){
   clearTimers(room);
-  room.currentRound=0;room.currentPhaseRound=0;room.subs={};room.teamSubs={};
+  room.currentRound=0;room.currentPhaseRound=0;room.subs={};room.teamSubs={};room.bets={};
   room.results=null;room.finalScores=null;room.roundData=null;room.mode=null;
   room.scores={};room.phaseScores={};room.modeHistory=[];room.zeitStartedAt=null;room.teamScores=null;room.playerStates={};
-  room.players.forEach(p=>{room.scores[p.id]=0;room.phaseScores[p.id]=0;p.eliminated=false});
+  room.players.forEach(p=>{room.scores[p.id]=50;room.phaseScores[p.id]=50;p.eliminated=false});
 }
 
 // Spin phase: pick random mode, prepare round data
@@ -102,7 +120,7 @@ function spinForRound(room){
   room.currentRound++;room.currentPhaseRound++;
   room.mode=pickMode(room);
   room.roundData=genRoundData(room.mode,room.format);
-  room.subs={};room.teamSubs={};room.results=null;room.teamScores=null;room.playerStates={};
+  room.subs={};room.teamSubs={};room.bets={};room.results=null;room.teamScores=null;room.playerStates={};
   room.phase="spin";bc(room);
 }
 
@@ -148,6 +166,12 @@ io.on("connection",sk=>{
   });
 
   sk.on("setTeam",({team})=>{const f=findRoom(sk.id);if(!f)return;f.player.team=team;bc(f.room)});
+  sk.on("placeBet",({bet})=>{
+    const f=findRoom(sk.id);if(!f)return;const{room}=f;
+    if(room.phase!=="spin")return;if(f.player.eliminated)return;
+    if(!["easy","medium","hard","skip"].includes(bet))return;
+    room.bets[sk.id]=bet;
+  });
   sk.on("updateSettings",({format,roundsPerPhase,wheelEnabled,selectedModes})=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
     if(format)room.format=format;
@@ -189,20 +213,21 @@ io.on("connection",sk=>{
     const active=activePlayers(room);
     if(Object.keys(room.subs).length>=active.length){
       const sorted=Object.values(room.subs).sort((a,b)=>a.value-b.value);
-      const coinTable=[10,8,6,5,4,3,2,1];
-      // Give coins to all players by rank
-      sorted.forEach((r,i)=>{
-        const coins=i<coinTable.length?coinTable[i]:1;
-        r.coins=coins;
-        room.scores[r.pid]=(room.scores[r.pid]||0)+coins;
-        room.phaseScores[r.pid]=(room.phaseScores[r.pid]||0)+coins;
+      sorted.forEach((r)=>{
+        const base=calcCoins(r.value);
+        const bet=room.bets[r.pid]||"skip";
+        const betResult=calcBetResult(bet,r.value);
+        r.baseCoins=base;r.bet=bet;r.betResult=betResult;
+        const total=base+betResult;
+        r.coins=total;
+        room.scores[r.pid]=Math.max(0,(room.scores[r.pid]||0)+total);
+        room.phaseScores[r.pid]=Math.max(0,(room.phaseScores[r.pid]||0)+total);
       });
       if(room.format==="teams"){
-        // Calculate average coins per team
         const teamA=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="a"});
         const teamB=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="b"});
-        const avgA=teamA.length?teamA.reduce((s,r)=>s+r.coins,0)/teamA.length:0;
-        const avgB=teamB.length?teamB.reduce((s,r)=>s+r.coins,0)/teamB.length:0;
+        const avgA=teamA.length?teamA.reduce((s,r)=>s+(room.scores[r.pid]||0),0)/teamA.length:0;
+        const avgB=teamB.length?teamB.reduce((s,r)=>s+(room.scores[r.pid]||0),0)/teamB.length:0;
         room.teamScores={a:avgA,b:avgB};
       }
       room.results=sorted;room.phase="results";bc(room);
@@ -222,17 +247,19 @@ io.on("connection",sk=>{
     const active=activePlayers(room);
     if(Object.keys(room.subs).length>=active.length){
       const sorted=Object.values(room.subs).sort((a,b)=>a.value-b.value);
-      const coinTable=[10,8,6,5,4,3,2,1];
-      sorted.forEach((r,i)=>{
-        const coins=i<coinTable.length?coinTable[i]:1;
-        r.coins=coins;
-        room.scores[r.pid]=(room.scores[r.pid]||0)+coins;
-        room.phaseScores[r.pid]=(room.phaseScores[r.pid]||0)+coins;
+      sorted.forEach((r)=>{
+        const base=calcCoins(r.value);
+        const bet=room.bets[r.pid]||"skip";
+        const betResult=calcBetResult(bet,r.value);
+        r.baseCoins=base;r.bet=bet;r.betResult=betResult;
+        r.coins=base+betResult;
+        room.scores[r.pid]=Math.max(0,(room.scores[r.pid]||0)+r.coins);
+        room.phaseScores[r.pid]=Math.max(0,(room.phaseScores[r.pid]||0)+r.coins);
       });
       const teamA=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="a"});
       const teamB=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="b"});
-      const avgA=teamA.length?teamA.reduce((s,r)=>s+r.coins,0)/teamA.length:0;
-      const avgB=teamB.length?teamB.reduce((s,r)=>s+r.coins,0)/teamB.length:0;
+      const avgA=teamA.length?teamA.reduce((s,r)=>s+(room.scores[r.pid]||0),0)/teamA.length:0;
+      const avgB=teamB.length?teamB.reduce((s,r)=>s+(room.scores[r.pid]||0),0)/teamB.length:0;
       room.teamScores={a:avgA,b:avgB};
       room.results=sorted;room.phase="results";bc(room);
     }
@@ -326,6 +353,7 @@ io.on("connection",sk=>{
     if(room.phaseScores[oldId]!==undefined){room.phaseScores[sk.id]=room.phaseScores[oldId];delete room.phaseScores[oldId]}
     if(room.subs[oldId]){room.subs[sk.id]=room.subs[oldId];room.subs[sk.id].pid=sk.id;delete room.subs[oldId]}
     if(room.teamSubs[oldId]){room.teamSubs[sk.id]=room.teamSubs[oldId];room.teamSubs[sk.id].pid=sk.id;delete room.teamSubs[oldId]}
+    if(room.bets[oldId]){room.bets[sk.id]=room.bets[oldId];delete room.bets[oldId]}
     if(room.hostId===oldId)room.hostId=sk.id;
     // Update results if they reference old ID
     if(room.results){room.results.forEach(r=>{if(r.pid===oldId)r.pid=sk.id})}
