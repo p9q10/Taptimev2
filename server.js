@@ -170,7 +170,7 @@ io.on("connection",sk=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;
     if(room.phase!=="spin")return;if(f.player.eliminated)return;
     if(!["easy","medium","hard","skip"].includes(bet))return;
-    room.bets[sk.id]=bet;
+    room.bets[sk.id]=bet;bc(room);
   });
   sk.on("updateSettings",({format,roundsPerPhase,wheelEnabled,selectedModes})=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
@@ -198,6 +198,10 @@ io.on("connection",sk=>{
   // After spin animation → begin playing
   sk.on("beginPlay",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
+    // Ensure all active players have bet
+    const active=activePlayers(room);
+    const allBet=active.every(p=>room.bets[p.id]);
+    if(!allBet){active.forEach(p=>{if(!room.bets[p.id])room.bets[p.id]="skip"});} // auto-skip missing
     room.phase="playing";
     if(room.mode==="timesense")room.zeitStartedAt=Date.now();
     bc(room);
