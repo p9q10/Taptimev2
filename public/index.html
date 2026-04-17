@@ -650,7 +650,8 @@ var _k={running:false,secs:0,highscore:0,bestStreak:0,bestZone:0,
   playerX:.5,playerW:54,area:null,areaW:300,areaH:600,
   streak:0,maxStreak:0,multi:1,fever:false,
   zone:0,level:1,wallActive:false,wallEl:null,wallCost:0,wallY:0,
-  lastChance:false,hbTimer:0,
+  wallPaying:false,wallPayLeft:0,
+  crashes:0,lastChance:false,hbTimer:0,
   frozen:0,shield:0,magnet:0,slowmo:0,ghost:0,
   musicInterval:null,beatCount:0};
 
@@ -666,7 +667,7 @@ var KZONES=[
   {n:"Nightfall",dur:9999,spd:345,spn:360,g:.34,go:.12,r:.36,x:.09,pw:.09,
    bg:"linear-gradient(180deg,#2A1F3D 0%,#1A1030 50%,#0A0518 100%)"}
 ];
-var KWALLS=[0,10,16,24,34,46,60,80];
+function kWallCost(lvl){return Math.round(8+lvl*4+Math.pow(lvl,1.3)*2)}
 var KPOW=["shield","magnet","slowmo","ghost"];
 var KPI={shield:"\u{1F6E1}",magnet:"\u{1F9F2}",slowmo:"\u{1F422}",ghost:"\u{1F47B}"};
 var KPC={shield:"#5EB8FF",magnet:"#B8A4F8",slowmo:"#FBBF24",ghost:"#80CBC4"};
@@ -740,6 +741,7 @@ function klassikerPlay(){
 _k.running=true;_k.secs=0;_k.objects=[];_k.idCounter=0;
 _k.playerX=.5;_k.streak=0;_k.maxStreak=0;_k.multi=1;_k.fever=false;
 _k.zone=0;_k.level=1;_k.wallActive=false;_k.wallEl=null;_k.wallCost=0;_k.wallY=0;
+_k.wallPaying=false;_k.wallPayLeft=0;_k.crashes=0;
 _k.lastChance=false;_k.hbTimer=0;
 _k.frozen=0;_k.shield=0;_k.magnet=0;_k.slowmo=0;_k.ghost=0;
 _k.lastTick=performance.now();kLoadHigh();
@@ -756,7 +758,7 @@ $("app").innerHTML=
     '<div id="kSK" style="font-size:9px;font-weight:800;color:var(--gold);opacity:0;transition:opacity .2s"></div>'+
     '<div class="ct"><div id="kZN" style="font-size:8px;font-weight:900;color:var(--sun);letter-spacing:2px">LVL 1 \u2022 SUNRISE</div>'+
     '<div id="kMU" style="font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.35);font-weight:700">\u00d71</div></div>'+
-    '<div id="kPW" style="font-size:14px"></div>'+
+    '<div style="display:flex;align-items:center;gap:6px"><div id="kCR" style="font-size:12px;letter-spacing:2px;opacity:.3">\u2715\u2715\u2715</div><div id="kPW" style="font-size:14px"></div></div>'+
   '</div>'+
   '<div style="font-size:7px;color:rgba(255,255,255,.25);font-weight:700;text-align:right;margin-top:2px">BEST <span id="kHI" class="mono">'+_k.highscore+'s</span></div>'+
 '</div>'+
@@ -827,15 +829,15 @@ f.textContent=txt;_k.area.appendChild(f);setTimeout(function(){if(f.parentNode)f
 /* ── WALL / GATE SYSTEM ── */
 function kShowWall(){
 if(!_k.area||_k.wallActive)return;
-var cost=KWALLS[Math.min(_k.level,KWALLS.length-1)];
-_k.wallActive=true;_k.wallCost=cost;_k.wallY=-60;
+var cost=kWallCost(_k.level);
+_k.wallActive=true;_k.wallCost=cost;_k.wallY=-60;_k.wallPaying=false;_k.wallPayLeft=0;
 var w=document.createElement("div");
 w.id="kWall";
-w.style.cssText="position:absolute;top:-60px;left:0;right:0;height:50px;z-index:7;display:flex;align-items:center;justify-content:center;gap:8px;pointer-events:none;"+
-"background:linear-gradient(180deg,rgba(244,63,94,.15),rgba(244,63,94,.6) 40%,rgba(52,211,153,.6) 60%,rgba(52,211,153,.15));"+
-"backdrop-filter:blur(2px);border-top:3px solid #F43F5E;border-bottom:3px solid #34D399";
-w.innerHTML='<span style="font-size:10px;font-weight:900;color:#fff;letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,.3)">LEVEL '+ (_k.level+1)+' GATE</span>'+
-'<span style="font-family:var(--mono);font-size:18px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.3)">-'+cost+'s</span>';
+w.style.cssText="position:absolute;top:-60px;left:0;right:0;height:54px;z-index:7;display:flex;align-items:center;justify-content:center;gap:10px;pointer-events:none;"+
+"background:linear-gradient(180deg,rgba(244,63,94,.1),rgba(244,63,94,.7) 35%,rgba(52,211,153,.7) 65%,rgba(52,211,153,.1));"+
+"border-top:3px solid #F43F5E;border-bottom:3px solid #34D399";
+w.innerHTML='<span style="font-size:11px;font-weight:900;color:#fff;letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,.3)">LEVEL '+ (_k.level+1)+' GATE</span>'+
+'<span id="kWallCost" style="font-family:var(--mono);font-size:22px;font-weight:900;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.3)">-'+cost+'s</span>';
 _k.area.appendChild(w);_k.wallEl=w;
 kSfxWall();vb([30,20,30])}
 
@@ -845,7 +847,24 @@ if(!_k.running)return;
 var dt=(now-_k.lastTick)/1000;_k.lastTick=now;if(dt>.1)dt=.1;
 var z=kZone(),spd=_k.slowmo>0?z.spd*.5:z.spd;
 var px=_k.playerX*_k.areaW,py=_k.areaH-22-_k.playerW/2;
-/* Seconds tick up naturally */
+/* Wall payment countdown mode */
+if(_k.wallPaying){
+  var payRate=_k.wallCost*1.5;/* speed of countdown */
+  var chunk=payRate*dt;
+  if(_k.wallPayLeft<=chunk){_k.secs-=_k.wallPayLeft;_k.wallPayLeft=0;
+    /* Payment done — open wall */
+    _k.wallPaying=false;_k.level++;_k.wallActive=false;
+    if(_k.wallEl){_k.wallEl.style.transition="all .5s";_k.wallEl.style.opacity="0";_k.wallEl.style.transform="scaleY(0)";
+    setTimeout(function(){var we=$("kWall");if(we&&we.parentNode)we.parentNode.removeChild(we)},500)}
+    kSfxWallOpen();vb([40,25,40,25,60]);screenFlash("rgba(52,211,153,.25)",300);
+    kFloat(_k.areaW/2,py-80,"LEVEL "+_k.level+"!","#34D399",true);
+    var zn=$("kZN");if(zn){zn.textContent="LVL "+_k.level+" \u2022 "+kZone().n.toUpperCase()}
+  }else{_k.wallPayLeft-=chunk;_k.secs-=chunk;
+    if(_k.secs<=0){_k.secs=0;kGameOver();return}
+    var wc=$("kWallCost");if(wc)wc.textContent="-"+Math.ceil(_k.wallPayLeft)+"s";
+    sfx(300+(_k.wallCost-_k.wallPayLeft)*8,.03,"sine",.04)}
+  kHUD();_k.frame=requestAnimationFrame(kGameLoop);return}
+/* Normal gameplay */
 _k.secs+=dt;_k.multi=kMulti();
 /* Timers */
 if(_k.frozen>0)_k.frozen-=dt*1000;
@@ -854,25 +873,19 @@ if(_k.slowmo>0)_k.slowmo-=dt*1000;if(_k.ghost>0)_k.ghost-=dt*1000;
 /* Zone check */
 var elapsed=_k.secs,zs=0;
 for(var zi=0;zi<KZONES.length;zi++){if(elapsed<zs+KZONES[zi].dur){if(zi!==_k.zone){_k.zone=zi;kZoneTrans()}break}zs+=KZONES[zi].dur}
-/* Wall trigger — every level*25 seconds */
-var nextWall=_k.level*25;
-if(!_k.wallActive&&_k.secs>=nextWall&&_k.level<KWALLS.length){kShowWall()}
+/* Wall trigger — every 45 seconds, infinite */
+var nextWall=_k.level*45;
+if(!_k.wallActive&&_k.secs>=nextWall){kShowWall()}
 /* Wall movement */
-if(_k.wallActive&&_k.wallEl){
-  _k.wallY+=spd*.7*dt;_k.wallEl.style.top=_k.wallY+"px";
+if(_k.wallActive&&_k.wallEl&&!_k.wallPaying){
+  _k.wallY+=spd*.6*dt;_k.wallEl.style.top=_k.wallY+"px";
   if(_k.wallY>=py-60){
-    /* Wall reached player */
-    var cost=_k.wallCost;
-    if(_k.secs>=cost){
-      _k.secs-=cost;_k.level++;_k.wallActive=false;
-      _k.wallEl.style.transition="all .4s";_k.wallEl.style.opacity="0";_k.wallEl.style.transform="scaleY(0)";
-      setTimeout(function(){var we=$("kWall");if(we&&we.parentNode)we.parentNode.removeChild(we)},400);
-      kSfxWallOpen();vb([40,25,40,25,60]);screenFlash("rgba(52,211,153,.2)",250);
-      kFloat(_k.areaW/2,py-80,"LEVEL "+_k.level+"!","#34D399",true);
-      var zn=$("kZN");if(zn){zn.textContent="LVL "+_k.level+" \u2022 "+kZone().n.toUpperCase()}
-    }else{
-      /* Can't afford — GAME OVER */
-      _k.wallActive=false;kGameOver();return}}}
+    /* Wall touches player — start payment countdown */
+    _k.wallEl.style.top=(py-60)+"px";
+    if(_k.secs>=_k.wallCost){
+      _k.wallPaying=true;_k.wallPayLeft=_k.wallCost;
+      vb([50,30,50]);sfx(200,.15,"triangle",.1);
+    }else{_k.wallActive=false;kGameOver();return}}}
 /* Fever */
 if(_k.streak>=20&&!_k.fever){_k.fever=true;kSfxFever();vb([30,18,30,18,50]);screenFlash("rgba(251,191,36,.25)",300)}
 if(_k.streak<20)_k.fever=false;
@@ -901,8 +914,10 @@ else if(o.t==="red"){
   else{_k.secs=Math.max(0,_k.secs-o.v);_k.streak=0;kSfxRed();vb(22);kFloat(o.x,o.y,"-"+o.v+"s","#F43F5E",false)}}
 else if(o.t==="crash"){
   if(_k.ghost>0){}else if(_k.shield>0){_k.shield=0;sfx(200,.08,"sine",.1);vb(35)}
-  else{_k.secs=Math.max(0,_k.secs*.4);_k.frozen=1300;_k.streak=0;_k.fever=false;kSfxCrash();screenShake();screenFlash("rgba(244,63,94,.2)",250);
-    var pe=$("kPL");if(pe){pe.style.opacity=".2";setTimeout(function(){var p=$("kPL");if(p)p.style.opacity="1"},1300)}}}
+  else{_k.crashes++;_k.streak=0;_k.fever=false;kSfxCrash();screenShake();screenFlash("rgba(244,63,94,.25)",300);
+    var pe=$("kPL");if(pe){pe.style.opacity=".2";setTimeout(function(){var p=$("kPL");if(p)p.style.opacity="1"},800)}
+    kFloat(o.x,o.y,"\u2715 "+_k.crashes+"/3","#FF6B6B",true);
+    if(_k.crashes>=3){kGameOver();return}}}
 else if(o.t==="power"&&o.pw){_k[o.pw]=KPD[o.pw];kSfxPower();vb([12,8,12]);screenFlash("rgba(184,164,248,.12)",120);kFloat(o.x,o.y,KPI[o.pw],"#B8A4F8",true)}
 _k.objects.splice(i,1);continue}
 if(o.y>_k.areaH+30){o.a=false;if(o.el.parentNode)o.el.parentNode.removeChild(o.el);_k.objects.splice(i,1)}}
@@ -927,6 +942,7 @@ var sm=$("kSM");if(sm){var m=Math.floor(sc/60),s=sc%60;sm.textContent="("+m+"m "
 var sk=$("kSK");if(sk){if(_k.streak>=3){sk.textContent=_k.streak+"x STREAK \u00d7"+_k.multi;sk.style.opacity="1";sk.style.color=_k.fever?"#FFD166":"var(--gold)";sk.style.fontSize=_k.fever?"11px":"9px"}else sk.style.opacity="0"}
 var mu=$("kMU");if(mu){mu.textContent="\u00d7"+_k.multi;mu.style.color=_k.fever?"#FFD166":_k.multi>=3?"var(--gold)":"rgba(255,255,255,.35)";mu.style.fontSize=_k.multi>=5?"16px":"12px"}
 var pw=$("kPW");if(pw){var ic="";if(_k.shield>0)ic+="\u{1F6E1}";if(_k.magnet>0)ic+="\u{1F9F2}";if(_k.slowmo>0)ic+="\u{1F422}";if(_k.ghost>0)ic+="\u{1F47B}";pw.textContent=ic}
+var cr=$("kCR");if(cr){var cs="";for(var ci=0;ci<3;ci++)cs+=ci<_k.crashes?'<span style="color:#FF6B6B;opacity:1">\u2715</span>':'<span style="opacity:.2">\u2715</span>';cr.innerHTML=cs}
 if(sc>_k.highscore){_k.highscore=sc;kSaveHigh();var hi=$("kHI");if(hi){hi.textContent=_k.highscore+"s";hi.style.color="var(--green)"}}}
 
 function kGameOver(){
