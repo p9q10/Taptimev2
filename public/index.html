@@ -608,7 +608,7 @@ targetHtml+
 '<div id="resReveal" style="min-height:180px;margin-top:14px"><div style="font-size:14px;color:var(--sub);font-weight:800;letter-spacing:3px;animation:breathe 1s ease infinite;padding:50px 0">ERGEBNISSE...</div></div>'+
 (isHost?'<div id="resNav" style="display:none"><div class="ct" style="display:flex;flex-direction:column;align-items:center;gap:12px"><button class="btn" onclick="so.emit(\'nextRound\')">Weiter ▶</button><button class="btn2" style="font-size:10px;letter-spacing:2px" onclick="so.emit(\'endGame\')">BEENDEN</button></div></div>':'<div id="resNav" style="display:none"><div class="ct" style="font-size:11px;color:var(--sub);margin-top:14px;font-weight:700;animation:breathe 2s ease infinite">Warte auf Host...</div></div>')+'</div>';
 
-var reversed=res.slice().reverse();var totalDelay=1200;var perPlayer=700;
+var totalDelay=1200;var perPlayer=700;
 startTension();
 setTimeout(function(){
   stopTension();sfxTick();vb(20);
@@ -618,8 +618,9 @@ setTimeout(function(){
     teamHtml='<div class="cd" style="margin-bottom:12px;padding:12px;animation:slideIn .4s ease"><div style="display:flex;justify-content:space-between;align-items:center"><div style="text-align:center;flex:1"><div style="font-size:9px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:4px">TEAM A 🟠</div><div style="font-size:18px;font-weight:700">🪙 <span style="font-family:var(--mono);color:'+(aWon?"var(--gold)":"var(--sub)")+'">'+Math.round(ts.a)+'</span></div>'+(aWon?'<div style="font-size:9px;color:var(--green);font-weight:800;margin-top:3px">FÜHRT</div>':'')+'</div><div style="font-size:11px;color:var(--sub);font-weight:900;padding:0 8px">VS</div><div style="text-align:center;flex:1"><div style="font-size:9px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:4px">TEAM B 🔵</div><div style="font-size:18px;font-weight:700">🪙 <span style="font-family:var(--mono);color:'+(!aWon?"var(--blue)":"var(--sub)")+'">'+Math.round(ts.b)+'</span></div>'+(!aWon?'<div style="font-size:9px;color:var(--green);font-weight:800;margin-top:3px">FÜHRT</div>':'')+'</div></div></div>'}
   rv.innerHTML=teamHtml+'<div class="cd" style="padding:6px 12px" id="resRows"></div>';
   var container=$("resRows");if(!container)return;
-  reversed.forEach(function(r,ri){
-    var origIdx=res.length-1-ri;var rank=r.rank||origIdx+1;
+  res.sort(function(a,b){return(a.rank||99)-(b.rank||99)});
+  res.forEach(function(r,ri){
+    var rank=r.rank||ri+1;
     var delay=ri*perPlayer;
     setTimeout(function(){
       var medal=rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":"<span style='font-size:12px;color:var(--sub);font-weight:800'>#"+rank+"</span>";
@@ -632,7 +633,7 @@ setTimeout(function(){
       if(room.mode==="reaction")valTxt=r.value.toFixed(3)+'s Reaktion';
       if(room.mode==="tapfrenzy"){var taps=Math.round((rd.duration||5)/Math.max(0.01,r.value));valTxt=taps+' Taps';}
       var row=document.createElement("div");
-      row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:"+(isWinner?"18px 10px":"11px 6px")+";border-bottom:"+(origIdx<res.length-1?"1px solid var(--border)":"none")+";animation:"+(isWinner?"pop .5s ease":"slideIn .4s ease")+" both"+(isWinner?";background:rgba(255,107,107,.06);border-radius:18px;margin:4px -4px":"");
+      row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:"+(isWinner?"18px 10px":"11px 6px")+";border-bottom:"+(ri<res.length-1?"1px solid var(--border)":"none")+";animation:"+(isWinner?"pop .5s ease":"slideIn .4s ease")+" both"+(isWinner?";background:rgba(255,107,107,.06);border-radius:18px;margin:4px -4px":"");
       row.innerHTML='<div style="display:flex;align-items:center;gap:8px"><div style="width:28px;text-align:center;font-size:'+(rank<=3?'20':'12')+'px">'+medal+'</div>'+
         '<div style="width:'+(isWinner?46:34)+'px;height:'+(isWinner?46:34)+'px;border-radius:50%;background:#fff;border:'+(isWinner?"3px":"2px")+' solid '+(isMe?"var(--gold)":"var(--border)")+';display:flex;align-items:center;justify-content:center;box-shadow:'+(isWinner?"0 3px 12px rgba(255,107,107,.15)":"none")+'">'+avHTML(r.avatar,isWinner?32:22)+'</div>'+
         '<div><div style="font-size:'+(isWinner?'14':'12')+'px;font-weight:900;color:'+(isMe?"var(--gold)":"var(--text)")+'">'+r.name+teamBadge+'</div>'+
@@ -643,7 +644,7 @@ setTimeout(function(){
       sfxTick();vb(15);
       if(isWinner){sfxGood();vbSuccess();screenFlash("rgba(255,107,107,.15)",200);
         if(isMe)setTimeout(function(){spawnConfetti(25)},200)}
-      if(ri===reversed.length-1){var nav=$("resNav");if(nav){nav.style.display="block";nav.style.animation="fadeIn .4s ease"}}
+      if(ri===res.length-1){var nav=$("resNav");if(nav){nav.style.display="block";nav.style.animation="fadeIn .4s ease"}}
     },delay);
   });
 },totalDelay);
