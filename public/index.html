@@ -91,6 +91,13 @@ input{font-family:var(--f);outline:none}
 @keyframes screenShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
 @keyframes flashIn{0%{opacity:.3}100%{opacity:0}}
 @keyframes confettiFall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+@keyframes countUp{0%{transform:scale(.8);opacity:0}50%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+@keyframes crownDrop{0%{transform:translateY(-40px) scale(0);opacity:0}60%{transform:translateY(5px) scale(1.2);opacity:1}100%{transform:translateY(0) scale(1)}}
+@keyframes podiumRise{0%{transform:translateY(60px);opacity:0}70%{transform:translateY(-4px)}100%{transform:translateY(0);opacity:1}}
+@keyframes glowPulse{0%,100%{filter:drop-shadow(0 0 8px rgba(255,184,0,.2))}50%{filter:drop-shadow(0 0 20px rgba(255,184,0,.5))}}
+@keyframes nameReveal{0%{transform:scale(.3) translateY(20px);opacity:0;letter-spacing:12px}60%{transform:scale(1.08) translateY(-3px);opacity:1}100%{transform:scale(1) translateY(0);letter-spacing:3px}}
+@keyframes rowSlide{0%{transform:translateX(-30px);opacity:0}100%{transform:translateX(0);opacity:1}}
+@keyframes scoreCount{0%{transform:scale(1)}50%{transform:scale(1.3);color:var(--gold)}100%{transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 #flashOverlay{position:fixed;inset:0;pointer-events:none;z-index:9990;opacity:0}
 #confettiBox{position:fixed;inset:0;pointer-events:none;z-index:9989;overflow:hidden}
@@ -180,6 +187,19 @@ function vbBuzzer(){vb([60,15,30])}
 function vbSuccess(){vb([30,40,30])}
 function vbFail(){vb([80,20,40])}
 function vbElim(){vb([60,30,60,30,120])}
+
+/* ═══ VOICE ═══ */
+function say(text,rate){try{if(!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(text);u.lang="de-DE";u.rate=rate||1.1;u.pitch=1.2;u.volume=0.8;window.speechSynthesis.cancel();window.speechSynthesis.speak(u)}catch(e){}}
+
+/* ═══ COIN COUNT ANIMATION ═══ */
+function coinCount(el,target,dur){if(!el)return;var t0=performance.now();dur=dur||800;
+function tick(now){var p=Math.min(1,(now-t0)/dur);var eased=1-Math.pow(1-p,3);var v=Math.round(eased*target);el.textContent=v;
+if(p<1){if(v%5===0)sfx(400+v*3,.02,"sine",.02);requestAnimationFrame(tick)}
+else{el.textContent=target;el.style.animation="scoreCount .3s ease";sfx(800,.06,"sine",.1)}}
+requestAnimationFrame(tick)}
+
+/* ═══ GLOBAL BUTTON SOUNDS ═══ */
+document.addEventListener("touchstart",function(e){if(e.target.tagName==="BUTTON"||e.target.closest("button")||e.target.onclick){initAudio();sfx(600,.03,"sine",.08);sfx(900,.02,"sine",.04);vb(8)}},{passive:true});
 var so=io(location.origin,{reconnection:true,reconnectionAttempts:30});
 var myId=null,room=null,myName="",myAvatar="cool",selFormat="ffa";
 var AVD={
@@ -589,62 +609,61 @@ fz.frame=requestAnimationFrame(frenzyFrame)}
 
 /* ══ RESULTS ══ */
 function renderResults(){submitted=false;stopTension();startMusic();var res=room.results||[],isHost=room.hostId===room.myId,m=MI[room.mode]||MI.bullseye;var sc=room.scores||{};var rd=room.roundData||{};
-/* Target info per mode */
 var targetHtml='';
-if(room.mode==="bullseye"||room.mode==="countdown")targetHtml='<div style="font-family:var(--mono);font-size:20px;color:var(--text);font-weight:500">Ziel: '+rd.targetTime.toFixed(1)+'s</div>';
-else if(room.mode==="timesense")targetHtml='<div style="font-family:var(--mono);font-size:20px;color:var(--text);font-weight:500">Dauer: '+(rd.hiddenDuration||0).toFixed(1)+'s</div>';
-else if(room.mode==="memory")targetHtml='<div style="font-family:var(--mono);font-size:20px;color:var(--text);font-weight:500">Zahl: '+(rd.shownTime||0).toFixed(rd.decimals||3)+'s</div>';
-else if(room.mode==="reaction")targetHtml='<div style="font-size:13px;color:var(--sub);font-weight:700">Schnellste Reaktion gewinnt!</div>';
-else if(room.mode==="tapfrenzy")targetHtml='<div style="font-size:13px;color:var(--sub);font-weight:700">'+(rd.duration||5)+'s — Meiste Taps gewinnen!</div>';
-
-$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:16px">'+
-'<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px">'+
-  '<div style="width:44px;height:44px;border-radius:50%;background:'+m.color+'15;border:2.5px solid '+m.color+';display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 3px 14px '+m.color+'30">'+m.icon+'</div>'+
-  '<div><div style="font-size:15px;font-weight:900;color:'+m.color+';letter-spacing:2px">'+m.name.toUpperCase()+'</div>'+
-  '<div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">RUNDE '+room.currentRound+'</div></div></div>'+
-targetHtml+
-'<div id="resReveal" style="min-height:180px;margin-top:14px"><div style="font-size:14px;color:var(--sub);font-weight:800;letter-spacing:3px;animation:breathe 1s ease infinite;padding:50px 0">ERGEBNISSE...</div></div>'+
-(isHost?'<div id="resNav" style="display:none"><div class="ct" style="display:flex;flex-direction:column;align-items:center;gap:12px"><button class="btn" onclick="so.emit(\'nextRound\')">Weiter ▶</button><button class="btn2" style="font-size:10px;letter-spacing:2px" onclick="so.emit(\'endGame\')">BEENDEN</button></div></div>':'<div id="resNav" style="display:none"><div class="ct" style="font-size:11px;color:var(--sub);margin-top:14px;font-weight:700;animation:breathe 2s ease infinite">Warte auf Host...</div></div>')+'</div>';
-
-var totalDelay=1200;var perPlayer=700;
-startTension();
+if(room.mode==="bullseye"||room.mode==="countdown")targetHtml='<div class="time-display" style="max-width:220px;margin:8px auto"><div style="font-size:8px;color:rgba(255,216,96,.5);font-weight:800;letter-spacing:2px">ZIEL</div><div style="font-family:var(--mono);font-size:32px;color:#FFD860;text-shadow:0 0 16px rgba(255,216,96,.3)">'+rd.targetTime.toFixed(1)+'<span style="font-size:14px;opacity:.4">s</span></div></div>';
+else if(room.mode==="timesense")targetHtml='<div class="time-display" style="max-width:220px;margin:8px auto"><div style="font-size:8px;color:rgba(128,255,144,.5);font-weight:800;letter-spacing:2px">DAUER</div><div style="font-family:var(--mono);font-size:32px;color:#80FF90;text-shadow:0 0 16px rgba(128,255,144,.3)">'+(rd.hiddenDuration||0).toFixed(1)+'<span style="font-size:14px;opacity:.4">s</span></div></div>';
+else if(room.mode==="memory")targetHtml='<div class="time-display" style="max-width:220px;margin:8px auto"><div style="font-size:8px;color:rgba(255,255,255,.4);font-weight:800;letter-spacing:2px">ZAHL</div><div style="font-family:var(--mono);font-size:32px;color:#fff;text-shadow:0 0 16px rgba(255,255,255,.2)">'+(rd.shownTime||0).toFixed(rd.decimals||3)+'<span style="font-size:14px;opacity:.4">s</span></div></div>';
+else if(room.mode==="reaction")targetHtml='<div style="font-size:12px;color:var(--sub);font-weight:700;margin:6px 0">Schnellste Reaktion gewinnt!</div>';
+else if(room.mode==="tapfrenzy")targetHtml='<div style="font-size:12px;color:var(--sub);font-weight:700;margin:6px 0">'+(rd.duration||5)+'s — Meiste Taps gewinnen!</div>';
+var myRes=res.find(function(r){return r.pid===room.myId});var myRank=myRes?myRes.rank||1:99;
+$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:12px"><div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px"><div style="width:40px;height:40px;border-radius:50%;background:'+m.color+'18;border:2.5px solid '+m.color+';display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 12px '+m.color+'25">'+m.icon+'</div><div><div style="font-family:var(--ft);font-size:14px;color:'+m.color+';letter-spacing:2px">'+m.name.toUpperCase()+'</div><div style="font-size:8px;color:var(--sub);font-weight:700;letter-spacing:1px">RUNDE '+room.currentRound+'</div></div></div>'+targetHtml+'<div id="resReveal" style="min-height:220px;margin-top:10px"><div style="font-family:var(--ft);font-size:18px;color:var(--sub);letter-spacing:4px;animation:breathe 1s ease infinite;padding:60px 0">ERGEBNISSE...</div></div>'+(isHost?'<div id="resNav" style="display:none"><div class="ct" style="display:flex;flex-direction:column;align-items:center;gap:10px"><button class="btn btn-green" onclick="so.emit(\'nextRound\')">WEITER</button><button class="btn2" style="font-size:10px;letter-spacing:2px" onclick="so.emit(\'endGame\')">BEENDEN</button></div></div>':'<div id="resNav" style="display:none"><div class="ct" style="font-size:11px;color:var(--sub);margin-top:14px;font-weight:700;animation:breathe 2s ease infinite">Warte auf Host...</div></div>')+'</div>';
+var totalDelay=1500;startTension();
 setTimeout(function(){
-  stopTension();sfxTick();vb(20);
+  stopTension();sfxTick();vb([30,15,30]);
   var rv=$("resReveal");if(!rv)return;
+  res.sort(function(a,b){return(a.rank||99)-(b.rank||99)});
+  var top3=res.slice(0,Math.min(3,res.length));var rest=res.slice(3);
   var teamHtml='';
   if(room.format==="teams"&&room.teamScores){var ts=room.teamScores;var aWon=ts.a>=ts.b;
-    teamHtml='<div class="cd" style="margin-bottom:12px;padding:12px;animation:slideIn .4s ease"><div style="display:flex;justify-content:space-between;align-items:center"><div style="text-align:center;flex:1"><div style="font-size:9px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:4px">TEAM A 🟠</div><div style="font-size:18px;font-weight:700">🪙 <span style="font-family:var(--mono);color:'+(aWon?"var(--gold)":"var(--sub)")+'">'+Math.round(ts.a)+'</span></div>'+(aWon?'<div style="font-size:9px;color:var(--green);font-weight:800;margin-top:3px">FÜHRT</div>':'')+'</div><div style="font-size:11px;color:var(--sub);font-weight:900;padding:0 8px">VS</div><div style="text-align:center;flex:1"><div style="font-size:9px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:4px">TEAM B 🔵</div><div style="font-size:18px;font-weight:700">🪙 <span style="font-family:var(--mono);color:'+(!aWon?"var(--blue)":"var(--sub)")+'">'+Math.round(ts.b)+'</span></div>'+(!aWon?'<div style="font-size:9px;color:var(--green);font-weight:800;margin-top:3px">FÜHRT</div>':'')+'</div></div></div>'}
-  rv.innerHTML=teamHtml+'<div class="cd" style="padding:6px 12px" id="resRows"></div>';
-  var container=$("resRows");if(!container)return;
-  res.sort(function(a,b){return(a.rank||99)-(b.rank||99)});
-  res.forEach(function(r,ri){
-    var rank=r.rank||ri+1;
-    var delay=ri*perPlayer;
-    setTimeout(function(){
-      var medal=rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":"<span style='font-size:12px;color:var(--sub);font-weight:800'>#"+rank+"</span>";
-      var isMe=r.pid===room.myId;var isWinner=rank===1;
-      var pl=room.players.find(function(p){return p.id===r.pid});
-      var pts=sc[r.pid]||0;var coins=r.baseCoins||0;
-      var teamBadge=room.format==="teams"&&pl&&pl.team?'<span style="font-size:7px;color:'+(pl.team==="a"?"var(--gold)":"var(--blue)")+';background:'+(pl.team==="a"?"rgba(255,107,107,.08)":"rgba(94,184,255,.08)")+';padding:2px 5px;border-radius:999px;margin-left:4px;font-weight:800">'+(pl.team==="a"?"A":"B")+'</span>':'';
-      /* Format value based on mode */
-      var valTxt=r.value.toFixed(3)+'s Abweichung';
-      if(room.mode==="reaction")valTxt=r.value.toFixed(3)+'s Reaktion';
-      if(room.mode==="tapfrenzy"){var taps=Math.round((rd.duration||5)/Math.max(0.01,r.value));valTxt=taps+' Taps';}
-      var row=document.createElement("div");
-      row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:"+(isWinner?"18px 10px":"11px 6px")+";border-bottom:"+(ri<res.length-1?"1px solid var(--border)":"none")+";animation:"+(isWinner?"pop .5s ease":"slideIn .4s ease")+" both"+(isWinner?";background:rgba(255,107,107,.06);border-radius:18px;margin:4px -4px":"");
-      row.innerHTML='<div style="display:flex;align-items:center;gap:8px"><div style="width:28px;text-align:center;font-size:'+(rank<=3?'20':'12')+'px">'+medal+'</div>'+
-        '<div style="width:'+(isWinner?46:34)+'px;height:'+(isWinner?46:34)+'px;border-radius:50%;background:#fff;border:'+(isWinner?"3px":"2px")+' solid '+(isMe?"var(--gold)":"var(--border)")+';display:flex;align-items:center;justify-content:center;box-shadow:'+(isWinner?"0 3px 12px rgba(255,107,107,.15)":"none")+'">'+avHTML(r.avatar,isWinner?32:22)+'</div>'+
-        '<div><div style="font-size:'+(isWinner?'14':'12')+'px;font-weight:900;color:'+(isMe?"var(--gold)":"var(--text)")+'">'+r.name+teamBadge+'</div>'+
-        '<div style="font-family:var(--mono);font-size:9px;color:var(--sub);font-weight:500;margin-top:1px">'+valTxt+'</div></div></div>'+
-        '<div style="text-align:right"><div style="font-size:'+(isWinner?'15':'12')+'px;font-weight:800;color:'+(isWinner?"var(--gold)":"var(--text)")+'">🪙 +'+coins+'</div>'+
-        '<div style="font-size:8px;color:var(--sub);font-weight:700;margin-top:1px">Total: '+pts+'</div></div>';
-      container.appendChild(row);
-      sfxTick();vb(15);
-      if(isWinner){sfxGood();vbSuccess();screenFlash("rgba(255,107,107,.15)",200);
-        if(isMe)setTimeout(function(){spawnConfetti(25)},200)}
-      if(ri===res.length-1){var nav=$("resNav");if(nav){nav.style.display="block";nav.style.animation="fadeIn .4s ease"}}
-    },delay);
-  });
+    teamHtml='<div class="cd" style="margin-bottom:10px;padding:12px;animation:slideIn .4s ease"><div style="display:flex;justify-content:space-between;align-items:center"><div style="text-align:center;flex:1"><div style="font-size:8px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:3px">TEAM A</div><div style="font-size:16px;font-weight:700"><span style="font-family:var(--mono);color:'+(aWon?"var(--gold)":"var(--sub)")+'">'+Math.round(ts.a)+'</span></div></div><div style="font-family:var(--ft);font-size:14px;color:var(--sub);padding:0 6px">VS</div><div style="text-align:center;flex:1"><div style="font-size:8px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:3px">TEAM B</div><div style="font-size:16px;font-weight:700"><span style="font-family:var(--mono);color:'+(!aWon?"var(--blue)":"var(--sub)")+'">'+Math.round(ts.b)+'</span></div></div></div></div>'}
+  /* Podium */
+  var podH='<div style="display:flex;align-items:flex-end;justify-content:center;gap:5px;height:200px;margin:10px 0">';
+  var podData=[{rank:2,h:110,bg:"linear-gradient(180deg,#C8D8E8,#A0B8D0)",sh:"#80A0C0",avSz:42,numSz:24},{rank:1,h:155,bg:"linear-gradient(180deg,#FFD860,#FFB800)",sh:"#D49600",avSz:54,numSz:30},{rank:3,h:80,bg:"linear-gradient(180deg,#E8C090,#D0A870)",sh:"#B89060",avSz:42,numSz:24}];
+  [0,1,2].forEach(function(pi){var pd=podData[pi];var pr=top3.find(function(r){return(r.rank||99)===pd.rank});
+    if(!pr){podH+='<div style="width:80px"></div>';return}
+    var isMe=pr.pid===room.myId;var isW=pd.rank===1;
+    var valTxt=pr.value.toFixed(3)+'s';if(room.mode==="tapfrenzy"){valTxt=Math.round((rd.duration||5)/Math.max(.01,pr.value))+' Taps'}
+    podH+='<div style="width:'+(isW?95:80)+'px;height:'+pd.h+'px;border-radius:14px 14px 0 0;background:'+pd.bg+';position:relative;display:flex;flex-direction:column;align-items:center;padding-top:6px;animation:podiumRise .6s '+(pi*.15)+'s ease both;box-shadow:'+(isW?"0 0 28px rgba(255,184,0,.25)":"none")+'">';
+    podH+='<div style="width:'+pd.avSz+'px;height:'+pd.avSz+'px;border-radius:50%;position:absolute;top:-'+(pd.avSz/2+4)+'px;border:3px solid '+pd.sh+';box-shadow:0 3px 0 '+pd.sh+(isW?",0 0 16px rgba(255,184,0,.3)":"")+';display:flex;align-items:center;justify-content:center;animation:pop .5s '+(pi*.15+.3)+'s ease both;background:'+(isMe?"rgba(255,184,0,.15)":"#fff")+'">'+avHTML(pr.avatar,isW?36:26)+'</div>';
+    if(isW)podH+='<div style="font-size:20px;margin-top:8px;animation:crownDrop .5s .8s ease both">\uD83D\uDC51</div>';
+    podH+='<div style="font-family:var(--ft);font-size:'+pd.numSz+'px;color:rgba(255,255,255,.3);margin-top:'+(isW?2:10)+'px">'+pd.rank+'</div>';
+    podH+='<div style="font-size:'+(isW?10:8)+'px;font-weight:800;color:'+(isW?"rgba(90,58,0,.7)":"rgba(255,255,255,.7)")+'">'+pr.name+'</div>';
+    podH+='<div style="font-family:var(--mono);font-size:8px;color:'+(isW?"rgba(90,58,0,.4)":"rgba(255,255,255,.4)")+'">'+valTxt+'</div>';
+    podH+='<div style="margin-top:3px;font-size:'+(isW?13:10)+'px;font-weight:800;color:'+(isW?"#5A3A00":"#fff")+'">\uD83E\uDE99 <span id="coin'+pd.rank+'">0</span></div></div>'});
+  podH+='</div>';
+  /* Rest rows */
+  var restH='';
+  rest.forEach(function(r,ri){var rank=r.rank||ri+4;var isMe=r.pid===room.myId;
+    var valTxt=r.value.toFixed(3)+'s';if(room.mode==="tapfrenzy"){valTxt=Math.round((rd.duration||5)/Math.max(.01,r.value))+' Taps'}
+    restH+='<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:14px;background:'+(isMe?"rgba(255,184,0,.06)":"var(--card)")+';border:2px solid '+(isMe?"var(--gold)":"var(--border)")+';margin-top:6px;animation:rowSlide .4s '+(ri*.12+1.2)+'s ease both"><div style="display:flex;align-items:center;gap:7px"><span style="font-family:var(--ft);font-size:13px;color:var(--sub);width:22px;text-align:center">'+rank+'</span><div style="width:28px;height:28px;border-radius:50%;border:2px solid '+(isMe?"var(--gold)":"var(--border)")+';display:flex;align-items:center;justify-content:center">'+avHTML(r.avatar,20)+'</div><div><div style="font-size:11px;font-weight:800;color:'+(isMe?"var(--gold)":"var(--text)")+'">'+r.name+'</div><div style="font-family:var(--mono);font-size:8px;color:var(--sub)">'+valTxt+'</div></div></div><div style="font-size:10px;font-weight:800;color:var(--sub)">\uD83E\uDE99 +'+(r.baseCoins||0)+'</div></div>'});
+  /* MY RESULT BANNER */
+  var myBanner='';
+  if(myRes){var myCoins=myRes.baseCoins||0;var myTotal=sc[room.myId]||0;
+    var myVal=myRes.value.toFixed(3)+'s';if(room.mode==="tapfrenzy"){myVal=Math.round((rd.duration||5)/Math.max(.01,myRes.value))+' Taps'}
+    var rankEmoji=myRank===1?"\uD83E\uDD47":myRank===2?"\uD83E\uDD48":myRank===3?"\uD83E\uDD49":"#"+myRank;
+    var rankWord=myRank===1?"PERFEKT!":myRank===2?"STARK!":myRank===3?"GUT!":"WEITER SO!";
+    var rankColor=myRank===1?"#FFB800":myRank===2?"#A0B8D0":myRank===3?"#D0A870":"var(--sub)";
+    myBanner='<div class="cd" style="margin-top:12px;padding:14px;animation:countUp .5s 1.4s ease both;border:2px solid '+rankColor+'"><div class="ct"><div style="font-size:28px;animation:crownDrop .4s 1.8s ease both">'+rankEmoji+'</div><div style="font-family:var(--ft);font-size:24px;color:'+rankColor+';letter-spacing:3px;animation:nameReveal .6s 2s ease both">'+rankWord+'</div><div style="font-family:var(--mono);font-size:11px;color:var(--sub);margin-top:4px">'+myVal+'</div><div style="display:flex;justify-content:center;gap:20px;margin-top:10px"><div><div style="font-size:7px;color:var(--sub);font-weight:800;letter-spacing:1px">GEWONNEN</div><div style="font-size:20px;font-weight:800;color:var(--gold);margin-top:2px">\uD83E\uDE99 <span id="myCoins">0</span></div></div><div><div style="font-size:7px;color:var(--sub);font-weight:800;letter-spacing:1px">TOTAL</div><div style="font-family:var(--mono);font-size:20px;color:var(--text);margin-top:2px"><span id="myTotal">0</span></div></div></div></div></div>'}
+  rv.innerHTML=teamHtml+podH+'<div>'+restH+'</div>'+myBanner;
+  /* Coin counting with delay */
+  setTimeout(function(){
+    top3.forEach(function(pr){var el=$("coin"+(pr.rank||1));if(el)coinCount(el,pr.baseCoins||0,600)});
+    if(myRes){var mc=$("myCoins");if(mc)coinCount(mc,myRes.baseCoins||0,800);var mt=$("myTotal");if(mt)coinCount(mt,sc[room.myId]||0,1000)}
+    var winner=res[0];
+    if(winner&&winner.pid===room.myId){sfxWin();vb([50,30,50,30,80]);screenFlash("rgba(255,184,0,.2)",300);setTimeout(function(){spawnConfetti(35)},200);setTimeout(function(){say(myRank===1?"Perfekt! Platz eins!":"Gut gespielt!")},600)}
+    else{sfxGood();vb([30,20,30]);if(myRank<=3)setTimeout(function(){say("Platz "+myRank+"! Stark!")},500)}
+  },800);
+  setTimeout(function(){var nav=$("resNav");if(nav){nav.style.display="block";nav.style.animation="fadeIn .5s ease"}},2500);
 },totalDelay);
 }
 
