@@ -40,17 +40,9 @@ function genRoundData(mode,format){
   }
 }
 
-// Coin system: deviation → base coins
-function calcCoins(dev){
-  if(dev<0.050)return 100;
-  if(dev<0.100)return 75;
-  if(dev<0.200)return 50;
-  if(dev<0.500)return 30;
-  if(dev<1.000)return 15;
-  if(dev<2.000)return 5;
-  return 0;
-}
-// Bet outcome
+// Coin system: position-based
+var RANK_COINS=[100,70,45,25,15,5];
+function posCoins(rank){return RANK_COINS[Math.min(rank,RANK_COINS.length-1)]}
 function makeRoom(code,sk,name,avatar,format,roundsPerPhase){
   return{code,phase:"lobby",mode:null,format:format||"ffa",
     roundsPerPhase:roundsPerPhase||3,currentRound:0,currentPhaseRound:0,
@@ -201,11 +193,11 @@ io.on("connection",sk=>{
     const active=activePlayers(room);
     if(Object.keys(room.subs).length>=active.length){
       const sorted=Object.values(room.subs).sort((a,b)=>a.value-b.value);
-      sorted.forEach((r)=>{
-        const base=calcCoins(r.value);
-        r.baseCoins=base;r.coins=base;
-        room.scores[r.pid]=Math.max(0,(room.scores[r.pid]||0)+base);
-        room.phaseScores[r.pid]=Math.max(0,(room.phaseScores[r.pid]||0)+base);
+      sorted.forEach((r,i)=>{
+        const coins=posCoins(i);
+        r.rank=i+1;r.baseCoins=coins;r.coins=coins;
+        room.scores[r.pid]=Math.max(0,(room.scores[r.pid]||0)+coins);
+        room.phaseScores[r.pid]=Math.max(0,(room.phaseScores[r.pid]||0)+coins);
       });
       if(room.format==="teams"){
         const teamA=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="a"});
@@ -231,11 +223,11 @@ io.on("connection",sk=>{
     const active=activePlayers(room);
     if(Object.keys(room.subs).length>=active.length){
       const sorted=Object.values(room.subs).sort((a,b)=>a.value-b.value);
-      sorted.forEach((r)=>{
-        const base=calcCoins(r.value);
-        r.baseCoins=base;r.coins=base;
-        room.scores[r.pid]=Math.max(0,(room.scores[r.pid]||0)+base);
-        room.phaseScores[r.pid]=Math.max(0,(room.phaseScores[r.pid]||0)+base);
+      sorted.forEach((r,i)=>{
+        const coins=posCoins(i);
+        r.rank=i+1;r.baseCoins=coins;r.coins=coins;
+        room.scores[r.pid]=Math.max(0,(room.scores[r.pid]||0)+coins);
+        room.phaseScores[r.pid]=Math.max(0,(room.phaseScores[r.pid]||0)+coins);
       });
       const teamA=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="a"});
       const teamB=sorted.filter(s=>{const pl=room.players.find(x=>x.id===s.pid);return pl&&pl.team==="b"});
