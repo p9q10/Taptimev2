@@ -120,7 +120,9 @@ function checkElimination(room){
     const s=room.phaseScores[p.id]||0;
     if(s<worstScore||(s===worstScore&&Math.random()>.5)){worstScore=s;worstId=p.id}
   });
-  if(worstId){const wp=room.players.find(p=>p.id===worstId);if(wp)wp.eliminated=true}
+  if(worstId){const wp=room.players.find(p=>p.id===worstId);if(wp)wp.eliminated=true;
+    /* Transfer host if eliminated player was host */
+    if(worstId===room.hostId){const remaining=activePlayers(room);if(remaining.length>0){room.hostId=remaining[Math.floor(Math.random()*remaining.length)].id}}}
   room.currentPhaseRound=0;
   room.phaseScores={};activePlayers(room).forEach(p=>{room.phaseScores[p.id]=0});
   if(activePlayers(room).length<=1)return true;
