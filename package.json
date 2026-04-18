@@ -1,1 +1,13 @@
-{"name":"timetap","version":"3.1.0","scripts":{"start":"node server.js"},"dependencies":{"express":"^4.18.2","socket.io":"^4.7.2"}}
+{
+  "name": "time2tap",
+  "version": "2.0.0",
+  "description": "Time2Tap — Party Game + Time Rush Solo Mode",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "socket.io": "^4.7.0"
+  }
+}
