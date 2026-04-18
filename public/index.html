@@ -1,71 +1,72 @@
 <!DOCTYPE html><html><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="apple-mobile-web-app-capable" content="yes"><title>Time2Tap</title>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
 <style>
 :root{
-  --bg:#FFF5EE;--surf:#FFFFFF;--raised:#FFF0E8;--border:rgba(42,31,61,.06);
-  --gold:#FF6B6B;--goldb:#FF8A80;--teal:#2A1F3D;
-  --red:#F43F5E;--green:#34D399;--amber:#FBBF24;--blue:#5EB8FF;
-  --text:#2A1F3D;--sub:#9B8EA8;--muted:rgba(42,31,61,.03);
-  --f:'Nunito',sans-serif;--mono:'DM Mono',monospace;
-  --pink:#F472B6;--lav:#B8A4F8;--peach:#FFAB91;--mint:#6BCB9E;
-  --gG:0 6px 20px rgba(255,107,107,.25);
-  --gT:0 6px 20px rgba(52,211,153,.2);
-  --gR:0 6px 20px rgba(244,63,94,.2);
-  --gGr:0 6px 20px rgba(52,211,153,.2);
+  --bg:#FFF0D4;--surf:#FFF8E8;--raised:#FFF0D4;--border:#E8D8C0;
+  --gold:#FFB800;--goldb:#FFD040;--teal:#2A1F3D;
+  --red:#FF5A6A;--green:#6ECF4A;--amber:#FFB800;--blue:#4A90D9;
+  --text:#2A1F3D;--sub:#A09080;--muted:rgba(0,0,0,.03);
+  --f:'Nunito',sans-serif;--ft:'Lilita One',cursive;--mono:'DM Mono',monospace;
+  --pink:#FF6B9A;--lav:#B8A4F8;--peach:#FFAB91;--mint:#6BCB9E;--orange:#FF8A00;
+  --gG:0 6px 0 #3A8F20,0 8px 18px rgba(90,191,56,.2);
+  --gT:0 6px 0 #3570B0,0 8px 18px rgba(74,144,217,.2);
+  --gR:0 6px 0 #D43040,0 8px 18px rgba(255,80,96,.2);
+  --gGr:0 6px 0 #3A8F20;
   --glass:none;--metal:none;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow-x:hidden}
-body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100dvh;position:relative;
-  background-image:linear-gradient(160deg,#FFF5EE 0%,#FFE8E0 30%,#F0FFF4 60%,#F5F0FF 85%,#FFF5EE 100%)}
-body::before{content:'';position:fixed;top:8%;left:-8%;width:300px;height:300px;border-radius:50%;pointer-events:none;z-index:0;
-  background:radial-gradient(circle,rgba(255,209,102,.2) 0%,transparent 60%);filter:blur(50px);animation:floatOrb 10s ease-in-out infinite}
-body::after{content:'';position:fixed;bottom:5%;right:-8%;width:260px;height:260px;border-radius:50%;pointer-events:none;z-index:0;
-  background:radial-gradient(circle,rgba(184,164,248,.18) 0%,transparent 60%);filter:blur(50px);animation:floatOrb 12s 3s ease-in-out infinite}
+body{font-family:var(--f);background:var(--bg);color:var(--text);min-height:100dvh;position:relative}
+body::before{content:'';position:fixed;top:0;left:0;right:0;height:250px;pointer-events:none;z-index:0;
+  background:linear-gradient(180deg,rgba(255,216,96,.1),transparent)}
 #app{max-width:440px;margin:0 auto;padding:16px 18px 50px;position:relative;z-index:1}
 button{font-family:var(--f);cursor:pointer;border:none;outline:none}
 input{font-family:var(--f);outline:none}
 
-.btn{border-radius:999px;padding:18px 40px;color:#fff;font-size:15px;font-weight:800;letter-spacing:2px;text-transform:uppercase;
-  background:linear-gradient(180deg,#FF8A80,#FF6B6B);border:none;
-  transition:transform .1s,box-shadow .15s;width:100%;max-width:300px;
-  box-shadow:0 6px 0 #E04A4A,0 10px 28px rgba(255,107,107,.25),inset 0 2px 0 rgba(255,255,255,.25);
-  font-family:var(--f);position:relative;overflow:hidden}
-.btn::before{content:none}
-.btn:active{transform:translateY(5px) scale(.98);box-shadow:0 1px 0 #E04A4A,0 3px 8px rgba(255,107,107,.15)}
+.btn{border-radius:14px;padding:16px 40px;color:#fff;font-size:15px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  background:linear-gradient(180deg,#FF7888,#FF5060);border:none;
+  transition:transform .1s;width:100%;max-width:300px;
+  box-shadow:0 6px 0 #D43040,0 8px 20px rgba(255,80,96,.2),inset 0 2px 0 rgba(255,255,255,.2);
+  font-family:var(--ft);position:relative;overflow:hidden}
+.btn:active{transform:translateY(5px);box-shadow:0 1px 0 #D43040}
 .btn:disabled{opacity:.3;box-shadow:none;transform:none}
-.btn-blue{background:linear-gradient(180deg,#74C4FF,#5EB8FF);box-shadow:0 6px 0 #3A9ADE,0 10px 28px rgba(94,184,255,.25),inset 0 2px 0 rgba(255,255,255,.25)}
-.btn-blue:active{box-shadow:0 1px 0 #3A9ADE,0 3px 8px rgba(94,184,255,.15)}
-.btn-green{background:linear-gradient(180deg,#5EDEA8,#34D399);box-shadow:0 6px 0 #1FAF7A,0 10px 28px rgba(52,211,153,.25),inset 0 2px 0 rgba(255,255,255,.25)}
-.btn-green:active{box-shadow:0 1px 0 #1FAF7A,0 3px 8px rgba(52,211,153,.15)}
-.btn-red{background:linear-gradient(180deg,#FF6B8A,#F43F5E);box-shadow:0 6px 0 #D1254A,0 10px 28px rgba(244,63,94,.25),inset 0 2px 0 rgba(255,255,255,.25)}
-.btn-red:active{box-shadow:0 1px 0 #D1254A,0 3px 8px rgba(244,63,94,.15)}
-.btn2{border-radius:999px;padding:12px 26px;color:var(--sub);font-size:13px;font-weight:700;letter-spacing:1px;
-  background:#fff;border:2px solid var(--border);font-family:var(--f);transition:transform .1s;
-  box-shadow:0 3px 0 rgba(42,31,61,.04)}
+.btn-blue{background:linear-gradient(180deg,#6AB0F0,#4A90D9);box-shadow:0 6px 0 #3570B0,0 8px 20px rgba(74,144,217,.2),inset 0 2px 0 rgba(255,255,255,.2)}
+.btn-blue:active{box-shadow:0 1px 0 #3570B0}
+.btn-green{background:linear-gradient(180deg,#80E858,#5ABF38);box-shadow:0 6px 0 #3A8F20,0 8px 20px rgba(90,191,56,.2),inset 0 2px 0 rgba(255,255,255,.2)}
+.btn-green:active{box-shadow:0 1px 0 #3A8F20}
+.btn-red{background:linear-gradient(180deg,#FF7888,#FF5060);box-shadow:0 6px 0 #D43040,0 8px 20px rgba(255,80,96,.2),inset 0 2px 0 rgba(255,255,255,.2)}
+.btn-red:active{box-shadow:0 1px 0 #D43040}
+.btn2{border-radius:14px;padding:12px 26px;color:var(--sub);font-size:13px;font-weight:700;letter-spacing:1px;
+  background:var(--surf);border:2.5px solid var(--border);font-family:var(--f);transition:transform .1s;
+  box-shadow:0 3px 0 #D8C8B0}
 .btn2:active{transform:translateY(2px);box-shadow:none}
 
-.inp{font-size:16px;color:var(--text);background:#fff;
-  border:2.5px solid rgba(42,31,61,.08);border-radius:20px;padding:16px 24px;text-align:center;
+.inp{font-size:16px;color:var(--text);background:var(--surf);
+  border:3px solid var(--border);border-radius:14px;padding:14px 24px;text-align:center;
   width:100%;font-weight:700;font-family:var(--f);
-  box-shadow:inset 0 2px 6px rgba(42,31,61,.03);
+  box-shadow:inset 0 3px 6px rgba(0,0,0,.03);
   transition:border-color .3s,box-shadow .3s}
-.inp:focus{border-color:var(--gold);box-shadow:inset 0 2px 4px rgba(42,31,61,.03),0 0 0 4px rgba(255,107,107,.1)}
+.inp:focus{border-color:var(--gold);box-shadow:inset 0 2px 4px rgba(0,0,0,.03),0 0 0 3px rgba(255,184,0,.12)}
 
-.cd{border-radius:28px;background:#fff;border:none;padding:22px;
-  box-shadow:0 4px 0 rgba(42,31,61,.03),0 10px 30px rgba(255,180,140,.12)}
+.cd{border-radius:24px;background:var(--surf);border:3px solid var(--border);padding:20px;
+  box-shadow:0 4px 0 #D8C8B0,0 8px 20px rgba(0,0,0,.05),inset 0 2px 0 rgba(255,255,255,.8)}
 .ct{text-align:center}
-.lb{font-size:10px;color:var(--sub);letter-spacing:3px;text-transform:uppercase;margin-bottom:10px;font-weight:800}
+.lb{font-size:9px;color:var(--sub);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;font-weight:800}
 
 .dsp{font-family:var(--mono);color:var(--text);font-weight:500;font-feature-settings:"tnum"}
 
-.bezel{position:relative;border-radius:50%;background:#fff;padding:4px;
-  box-shadow:0 4px 0 rgba(42,31,61,.04),0 8px 28px rgba(255,180,140,.12)}
+.bezel{position:relative;border-radius:50%;background:var(--surf);padding:4px;
+  box-shadow:0 4px 0 #D8C8B0,0 8px 24px rgba(0,0,0,.06)}
 
-.pchip{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:999px;
-  border:none;background:#fff;box-shadow:0 2px 0 rgba(42,31,61,.03),0 4px 12px rgba(255,180,140,.08)}
+.pchip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;
+  border:2px solid var(--border);background:#FFF0D4;box-shadow:0 2px 0 #D8C8B0}
+
+.time-display{background:linear-gradient(180deg,#1A1A2A,#0A0A18);border-radius:16px;border:3px solid #3A3A5A;
+  padding:12px 18px;margin:10px auto;max-width:280px;box-shadow:inset 0 4px 12px rgba(0,0,0,.4),0 4px 0 rgba(0,0,0,.12);
+  position:relative;overflow:hidden;text-align:center}
+.time-display::before{content:'';position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);pointer-events:none}
 
 @keyframes pop{0%{transform:scale(.3);opacity:0}50%{transform:scale(1.06)}70%{transform:scale(.97)}100%{transform:scale(1);opacity:1}}
 @keyframes up{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -76,10 +77,10 @@ input{font-family:var(--f);outline:none}
 @keyframes spinR{to{transform:rotate(360deg)}}
 @keyframes shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-6px)}30%{transform:translateX(6px)}45%{transform:translateX(-4px)}60%{transform:translateX(4px)}75%{transform:translateX(-2px)}90%{transform:translateX(2px)}}
 @keyframes sHand{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes goldPulse{0%,100%{box-shadow:0 6px 0 #E04A4A,0 10px 28px rgba(255,107,107,.25),inset 0 2px 0 rgba(255,255,255,.25)}50%{box-shadow:0 6px 0 #E04A4A,0 16px 36px rgba(255,107,107,.35),inset 0 2px 0 rgba(255,255,255,.3)}}
-@keyframes redPulse{0%,100%{box-shadow:0 6px 0 #D1254A,0 10px 28px rgba(244,63,94,.2)}50%{box-shadow:0 6px 0 #D1254A,0 16px 36px rgba(244,63,94,.3)}}
-@keyframes greenPulse{0%,100%{box-shadow:0 6px 0 #1FAF7A,0 10px 28px rgba(52,211,153,.2)}50%{box-shadow:0 6px 0 #1FAF7A,0 16px 36px rgba(52,211,153,.3)}}
-@keyframes pinkPulse{0%,100%{box-shadow:0 6px 0 #C0356E,0 10px 28px rgba(244,114,182,.2)}50%{box-shadow:0 6px 0 #C0356E,0 16px 36px rgba(244,114,182,.3)}}
+@keyframes goldPulse{0%,100%{box-shadow:0 6px 0 #D49600,0 8px 20px rgba(255,184,0,.2)}50%{box-shadow:0 6px 0 #D49600,0 14px 30px rgba(255,184,0,.3)}}
+@keyframes redPulse{0%,100%{box-shadow:0 6px 0 #D43040,0 8px 20px rgba(255,80,96,.15)}50%{box-shadow:0 6px 0 #D43040,0 14px 30px rgba(255,80,96,.25)}}
+@keyframes greenPulse{0%,100%{box-shadow:0 6px 0 #3A8F20,0 8px 20px rgba(90,191,56,.15)}50%{box-shadow:0 6px 0 #3A8F20,0 14px 30px rgba(90,191,56,.25)}}
+@keyframes pinkPulse{0%,100%{box-shadow:0 6px 0 #C04070,0 8px 20px rgba(255,107,154,.15)}50%{box-shadow:0 6px 0 #C04070,0 14px 30px rgba(255,107,154,.25)}}
 @keyframes ringExpand{0%{transform:scale(1);opacity:.3}100%{transform:scale(1.5);opacity:0}}
 @keyframes tickFlash{0%,100%{opacity:.3}50%{opacity:1}}
 @keyframes breathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.01)}}
@@ -90,7 +91,6 @@ input{font-family:var(--f);outline:none}
 @keyframes screenShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
 @keyframes flashIn{0%{opacity:.3}100%{opacity:0}}
 @keyframes confettiFall{0%{transform:translateY(-10px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
-@keyframes floatOrb{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-20px) scale(1.08)}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 #flashOverlay{position:fixed;inset:0;pointer-events:none;z-index:9990;opacity:0}
 #confettiBox{position:fixed;inset:0;pointer-events:none;z-index:9989;overflow:hidden}
@@ -98,16 +98,16 @@ input{font-family:var(--f);outline:none}
 </style></head><body>
 
 <!-- ══ SPLASH ══ -->
-<div id="splash" style="position:fixed;inset:0;background:linear-gradient(160deg,#FFF5EE,#FFE8E0 40%,#F0FFF4 70%,#FFF5EE);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:splashFade 2.6s ease forwards">
-  <div style="width:120px;height:120px;margin-bottom:28px;border-radius:50%;background:linear-gradient(135deg,#FF8A80,#FF6B6B);box-shadow:0 8px 0 #E04A4A,0 14px 40px rgba(255,107,107,.3);display:flex;align-items:center;justify-content:center;animation:float 3s ease-in-out infinite">
-    <div style="font-size:52px">⏱</div>
+<div id="splash" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:splashFade 2.6s ease forwards">
+  <div style="width:100px;height:100px;margin-bottom:24px;border-radius:50%;background:linear-gradient(180deg,#FFD860,#FFB800);box-shadow:0 6px 0 #D49600,0 10px 28px rgba(255,184,0,.3),inset 0 3px 0 rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;animation:float 3s ease-in-out infinite">
+    <div style="font-size:48px">⏱</div>
   </div>
-  <div style="font-family:'Nunito',sans-serif;font-size:32px;font-weight:900;color:var(--text);letter-spacing:4px">TIME<span style="background:linear-gradient(135deg,#FF6B6B,#FBBF24,#34D399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:1.3em">2</span>TAP</div>
-  <div style="font-size:11px;color:#9B8EA8;margin-top:6px;letter-spacing:6px;font-weight:700">PARTY GAME</div>
-  <div style="display:flex;gap:8px;margin-top:32px">
-    <div style="width:10px;height:10px;border-radius:50%;background:#FF6B6B;animation:breathe 1.2s ease infinite"></div>
-    <div style="width:10px;height:10px;border-radius:50%;background:#5EB8FF;animation:breathe 1.2s .2s ease infinite"></div>
-    <div style="width:10px;height:10px;border-radius:50%;background:#FBBF24;animation:breathe 1.2s .4s ease infinite"></div>
+  <div style="font-family:'Lilita One',cursive;font-size:36px;color:var(--text);letter-spacing:3px">TIME<span style="color:#FFB800;font-size:1.3em">2</span>TAP</div>
+  <div style="font-size:10px;color:#A09080;margin-top:5px;letter-spacing:5px;font-weight:700">PARTY GAME</div>
+  <div style="display:flex;gap:8px;margin-top:28px">
+    <div style="width:10px;height:10px;border-radius:50%;background:#FF5A6A;animation:breathe 1.2s ease infinite"></div>
+    <div style="width:10px;height:10px;border-radius:50%;background:#FFB800;animation:breathe 1.2s .2s ease infinite"></div>
+    <div style="width:10px;height:10px;border-radius:50%;background:#6ECF4A;animation:breathe 1.2s .4s ease infinite"></div>
   </div>
 </div>
 
@@ -169,7 +169,7 @@ function screenFlash(color,duration){var el=$("flashOverlay");if(!el)return;el.s
 
 function screenShake(){var app=$("app");if(!app)return;app.style.animation="none";void app.offsetWidth;app.style.animation="screenShake .4s ease"}
 
-function spawnConfetti(count){var box=$("confettiBox");if(!box)return;box.innerHTML="";var colors=["#FF6B6B","#5EB8FF","#34D399","#FBBF24","#F472B6","#B8A4F8"];for(var i=0;i<(count||20);i++){var d=document.createElement("div");d.className="confetti";d.style.left=Math.random()*100+"%";d.style.top="-10px";d.style.background=colors[Math.floor(Math.random()*colors.length)];d.style.animationDelay=Math.random()*0.8+"s";d.style.animationDuration=(2+Math.random()*1.5)+"s";d.style.width=(5+Math.random()*6)+"px";d.style.height=(5+Math.random()*6)+"px";d.style.borderRadius=Math.random()>.5?"50%":"2px";box.appendChild(d)}setTimeout(function(){box.innerHTML=""},4000)}
+function spawnConfetti(count){var box=$("confettiBox");if(!box)return;box.innerHTML="";var colors=["#FF5A6A","#4A90D9","#6ECF4A","#FFB800","#FF6B9A","#FF8A00"];for(var i=0;i<(count||20);i++){var d=document.createElement("div");d.className="confetti";d.style.left=Math.random()*100+"%";d.style.top="-10px";d.style.background=colors[Math.floor(Math.random()*colors.length)];d.style.animationDelay=Math.random()*0.8+"s";d.style.animationDuration=(2+Math.random()*1.5)+"s";d.style.width=(5+Math.random()*6)+"px";d.style.height=(5+Math.random()*6)+"px";d.style.borderRadius=Math.random()>.5?"50%":"2px";box.appendChild(d)}setTimeout(function(){box.innerHTML=""},4000)}
 
 /* ═══ HAPTICS - tiered vibration patterns ═══ */
 function vb(p){try{navigator.vibrate(p)}catch(e){}}
@@ -196,8 +196,8 @@ gamer:{n:"Pixel",c:"#A5D6A7",s:'<ellipse cx="40" cy="73" rx="20" ry="10" fill="#
 };
 var AV=Object.keys(AVD);
 function avHTML(id,sz){var a=AVD[id];if(!a)return'<div style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:#E0E0E0;display:flex;align-items:center;justify-content:center;font-size:'+(sz*.4)+'px;color:#999">?</div>';return'<svg viewBox="0 0 80 80" width="'+sz+'" height="'+sz+'" style="display:block;overflow:hidden;border-radius:50%"><circle cx="40" cy="40" r="40" fill="'+a.c+'"/>'+a.s+'</svg>'}
-var MI={bullseye:{name:"Bullseye",icon:"🎯",color:"#FF6B6B",desc:"START drücken, Zielzeit im Kopf zählen, STOPP drücken."},timesense:{name:"Zeitgefühl",icon:"🧠",color:"#5EB8FF",desc:"Buzzer wird grün = zählen! Die App stoppt automatisch."},memory:{name:"Memory",icon:"💾",color:"#34D399",desc:"Zahl blitzt kurz auf. Merken und eingeben!"},reaction:{name:"Reaktion",icon:"⚡",color:"#FBBF24",desc:"10 Buzzer. Einer wird grün. Sofort drücken!"},countdown:{name:"Countdown",icon:"⏱",color:"#F472B6",desc:"Timer zählt von 10 runter — immer schneller! Stoppe bei der Zielzeit."},tapfrenzy:{name:"Tap Frenzy",icon:"🔥",color:"#FF8A00",desc:"Drücke so oft wie möglich in der Zeit!"}};
-var SEGS=[{id:"bullseye",color:"#FF6B6B"},{id:"timesense",color:"#5EB8FF"},{id:"memory",color:"#34D399"},{id:"reaction",color:"#FBBF24"},{id:"countdown",color:"#F472B6"},{id:"tapfrenzy",color:"#FF8A00"}];
+var MI={bullseye:{name:"Bullseye",icon:"🎯",color:"#FF5A6A",desc:"START drücken, Zielzeit im Kopf zählen, STOPP drücken."},timesense:{name:"Zeitgefühl",icon:"🧠",color:"#4A90D9",desc:"Buzzer wird grün = zählen! Die App stoppt automatisch."},memory:{name:"Memory",icon:"💾",color:"#6ECF4A",desc:"Zahl blitzt kurz auf. Merken und eingeben!"},reaction:{name:"Reaktion",icon:"⚡",color:"#FFB800",desc:"10 Buzzer. Einer wird grün. Sofort drücken!"},countdown:{name:"Countdown",icon:"⏱",color:"#FF6B9A",desc:"Timer zählt von 10 runter — immer schneller! Stoppe bei der Zielzeit."},tapfrenzy:{name:"Tap Frenzy",icon:"🔥",color:"#FF8A00",desc:"Drücke so oft wie möglich in der Zeit!"}};
+var SEGS=[{id:"bullseye",color:"#FF5A6A"},{id:"timesense",color:"#4A90D9"},{id:"memory",color:"#6ECF4A"},{id:"reaction",color:"#FFB800"},{id:"countdown",color:"#FF6B9A"},{id:"tapfrenzy",color:"#FF8A00"}];
 function $(id){return document.getElementById(id)}
 var _spectating=null;
 function emitState(data){if(!room||!so.connected)return;var me=room.players?room.players.find(function(p){return p.id===room.myId}):null;if(me&&me.eliminated)return;if(data.periodic){so.emit("playerState",data);return}setTimeout(function(){var appEl=$("app");data.html=appEl?appEl.innerHTML:"";so.emit("playerState",data)},0)}
@@ -246,24 +246,22 @@ function lcdPanel(text,sz){return'<div style="display:inline-block;padding:10px 
 /* ══ HOME ══ */
 function home(){so.emit("leave");room=null;window._lastRoomCode=null;fullClientReset();
 $("app").innerHTML=
-'<div style="animation:up .6s ease;padding-top:20px">'+
-'<div class="ct" style="margin-bottom:32px">'+
-  '<div style="margin:0 auto 16px">'+watchSVG(80)+'</div>'+
-  '<div style="font-family:var(--f);font-size:28px;font-weight:900;color:var(--gold);letter-spacing:4px">TIME<span style="color:#F43F5E;font-size:1.3em">2</span>TAP</div>'+
-  '<div style="font-size:11px;color:var(--sub);letter-spacing:5px;margin-top:4px;font-weight:700">PARTY GAME</div>'+
+'<div style="animation:up .6s ease;padding-top:28px">'+
+'<div class="ct" style="margin-bottom:36px">'+
+  '<div style="width:80px;height:80px;margin:0 auto 14px;border-radius:50%;background:linear-gradient(180deg,#FFD860,#FFB800);box-shadow:0 5px 0 #D49600,0 8px 24px rgba(255,184,0,.25),inset 0 3px 0 rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:38px;animation:float 3s ease-in-out infinite">⏱</div>'+
+  '<div style="font-family:var(--ft);font-size:32px;color:var(--text);letter-spacing:2px">TIME<span style="color:var(--gold);font-size:1.3em">2</span>TAP</div>'+
+  '<div style="font-size:10px;color:var(--sub);letter-spacing:4px;margin-top:3px;font-weight:700">PARTY GAME</div>'+
 '</div>'+
-'<div class="ct" style="margin-bottom:24px">'+
-  '<button onclick="initAudio();klassikerStart()" style="position:relative;width:180px;height:180px;border-radius:50%;background:linear-gradient(145deg,#5EDEA8,#34D399);border:4px solid #34D399;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 0 #1FAF7A,0 10px 36px rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.1);transition:transform .12s,box-shadow .12s;font-family:var(--f);margin:0 auto">'+
-    '<div style="font-size:36px">⏱</div>'+
-    '<div style="font-size:16px;font-weight:900;color:#fff;letter-spacing:3px">TIME RUSH</div>'+
-    '<div style="font-size:10px;font-weight:700;color:#34D399;letter-spacing:2px">SOLO</div>'+
+'<div class="ct" style="display:flex;flex-direction:column;align-items:center;gap:16px">'+
+  '<button onclick="initAudio();klassikerStart()" style="width:220px;padding:18px 24px;border-radius:14px;background:linear-gradient(180deg,#80E858,#5ABF38);border:none;cursor:pointer;box-shadow:0 6px 0 #3A8F20,0 8px 20px rgba(90,191,56,.2),inset 0 2px 0 rgba(255,255,255,.2);font-family:var(--ft);transition:transform .1s;color:#fff">'+
+    '<div style="font-size:26px;margin-bottom:4px">⏱</div>'+
+    '<div style="font-size:20px;letter-spacing:2px">TIME RUSH</div>'+
+    '<div style="font-size:9px;font-family:var(--f);font-weight:700;opacity:.5;letter-spacing:2px;margin-top:2px">SOLO</div>'+
   '</button>'+
-'</div>'+
-'<div class="ct">'+
-  '<button onclick="initAudio();setupRoom()" style="position:relative;width:140px;height:140px;border-radius:50%;background:linear-gradient(180deg,#FF8A80,#FF6B6B);border:4px solid var(--gold);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:0 5px 0 #E04A4A,0 8px 28px rgba(0,0,0,.22),inset 0 2px 0 rgba(255,255,255,.1);transition:transform .12s,box-shadow .12s;font-family:var(--f);margin:0 auto">'+
-    '<div style="font-size:28px">🎉</div>'+
-    '<div style="font-size:13px;font-weight:900;color:#fff;letter-spacing:2px">PARTY</div>'+
-    '<div style="font-size:9px;font-weight:700;color:var(--gold);letter-spacing:2px">MODUS</div>'+
+  '<button onclick="initAudio();setupRoom()" style="width:220px;padding:18px 24px;border-radius:14px;background:linear-gradient(180deg,#FFD040,#FFB800);border:none;cursor:pointer;box-shadow:0 6px 0 #D49600,0 8px 20px rgba(255,184,0,.2),inset 0 2px 0 rgba(255,255,255,.25);font-family:var(--ft);transition:transform .1s;color:#5A3A00">'+
+    '<div style="font-size:26px;margin-bottom:4px">🎉</div>'+
+    '<div style="font-size:20px;letter-spacing:2px">PARTY</div>'+
+    '<div style="font-size:9px;font-family:var(--f);font-weight:700;opacity:.5;letter-spacing:2px;margin-top:2px">MULTIPLAYER</div>'+
   '</button>'+
 '</div></div>';}
 
