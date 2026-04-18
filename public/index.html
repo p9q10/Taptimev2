@@ -590,47 +590,60 @@ if(fz.timeLeft<=0){fz.active=false;
 fz.frame=requestAnimationFrame(frenzyFrame)}
 
 /* ══ RESULTS ══ */
-function renderResults(){submitted=false;stopTension();startMusic();var res=room.results||[],isHost=room.hostId===room.myId,m=MI[room.mode]||MI.bullseye;var sc=room.scores||{};
-/* Phase 1: Suspense header */
-$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:20px"><div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px"><div style="width:48px;height:48px;border-radius:50%;background:'+m.color+'15;border:2.5px solid '+m.color+';display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 3px 14px '+m.color+'30">'+m.icon+'</div><div><div style="font-size:16px;font-weight:900;color:'+m.color+';letter-spacing:2px">'+m.name.toUpperCase()+'</div><div style="font-size:10px;color:var(--sub);font-weight:700;letter-spacing:1px">RUNDE '+room.currentRound+'</div></div></div><div id="resReveal" style="min-height:200px"><div style="font-size:14px;color:var(--sub);font-weight:800;letter-spacing:3px;animation:breathe 1s ease infinite;padding:60px 0">ERGEBNISSE...</div></div>'+(isHost?'<div id="resNav" style="display:none"><div class="ct" style="display:flex;flex-direction:column;align-items:center;gap:14px"><button class="btn" onclick="so.emit(\'nextRound\')">Weiter ▶</button><button class="btn2" style="font-size:10px;letter-spacing:2px" onclick="so.emit(\'endGame\')">BEENDEN</button></div></div>':'<div id="resNav" style="display:none"><div class="ct" style="font-size:11px;color:var(--sub);margin-top:18px;font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div></div>')+'</div>';
+function renderResults(){submitted=false;stopTension();startMusic();var res=room.results||[],isHost=room.hostId===room.myId,m=MI[room.mode]||MI.bullseye;var sc=room.scores||{};var rd=room.roundData||{};
+/* Target info per mode */
+var targetHtml='';
+if(room.mode==="bullseye"||room.mode==="countdown")targetHtml='<div style="font-family:var(--mono);font-size:20px;color:var(--text);font-weight:500">Ziel: '+rd.targetTime.toFixed(1)+'s</div>';
+else if(room.mode==="timesense")targetHtml='<div style="font-family:var(--mono);font-size:20px;color:var(--text);font-weight:500">Dauer: '+(rd.hiddenDuration||0).toFixed(1)+'s</div>';
+else if(room.mode==="memory")targetHtml='<div style="font-family:var(--mono);font-size:20px;color:var(--text);font-weight:500">Zahl: '+(rd.shownTime||0).toFixed(rd.decimals||3)+'s</div>';
+else if(room.mode==="reaction")targetHtml='<div style="font-size:13px;color:var(--sub);font-weight:700">Schnellste Reaktion gewinnt!</div>';
+else if(room.mode==="tapfrenzy")targetHtml='<div style="font-size:13px;color:var(--sub);font-weight:700">'+(rd.duration||5)+'s — Meiste Taps gewinnen!</div>';
 
-/* Phase 2: Reveal from last to first */
-var reversed=res.slice().reverse();
-var totalDelay=1200;
-var perPlayer=700;
+$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:16px">'+
+'<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px">'+
+  '<div style="width:44px;height:44px;border-radius:50%;background:'+m.color+'15;border:2.5px solid '+m.color+';display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 3px 14px '+m.color+'30">'+m.icon+'</div>'+
+  '<div><div style="font-size:15px;font-weight:900;color:'+m.color+';letter-spacing:2px">'+m.name.toUpperCase()+'</div>'+
+  '<div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">RUNDE '+room.currentRound+'</div></div></div>'+
+targetHtml+
+'<div id="resReveal" style="min-height:180px;margin-top:14px"><div style="font-size:14px;color:var(--sub);font-weight:800;letter-spacing:3px;animation:breathe 1s ease infinite;padding:50px 0">ERGEBNISSE...</div></div>'+
+(isHost?'<div id="resNav" style="display:none"><div class="ct" style="display:flex;flex-direction:column;align-items:center;gap:12px"><button class="btn" onclick="so.emit(\'nextRound\')">Weiter ▶</button><button class="btn2" style="font-size:10px;letter-spacing:2px" onclick="so.emit(\'endGame\')">BEENDEN</button></div></div>':'<div id="resNav" style="display:none"><div class="ct" style="font-size:11px;color:var(--sub);margin-top:14px;font-weight:700;animation:breathe 2s ease infinite">Warte auf Host...</div></div>')+'</div>';
 
+var reversed=res.slice().reverse();var totalDelay=1200;var perPlayer=700;
 startTension();
 setTimeout(function(){
   stopTension();sfxTick();vb(20);
   var rv=$("resReveal");if(!rv)return;
   var teamHtml='';
   if(room.format==="teams"&&room.teamScores){var ts=room.teamScores;var aWon=ts.a>=ts.b;
-    teamHtml='<div class="cd" style="margin-bottom:14px;padding:14px;animation:slideIn .4s ease"><div style="display:flex;justify-content:space-between;align-items:center"><div style="text-align:center;flex:1"><div style="font-size:9px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:4px">TEAM A 🟠</div><div style="font-size:20px;font-weight:700">🪙 <span style="font-family:var(--mono);color:'+(aWon?"var(--gold)":"var(--sub)")+'">'+Math.round(ts.a)+'</span></div>'+(aWon?'<div style="font-size:9px;color:var(--green);font-weight:800;margin-top:3px;letter-spacing:1px">FÜHRT</div>':'')+'</div><div style="font-size:12px;color:var(--sub);font-weight:900;padding:0 8px">VS</div><div style="text-align:center;flex:1"><div style="font-size:9px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:4px">TEAM B 🔵</div><div style="font-size:20px;font-weight:700">🪙 <span style="font-family:var(--mono);color:'+(!aWon?"var(--blue)":"var(--sub)")+'">'+Math.round(ts.b)+'</span></div>'+(!aWon?'<div style="font-size:9px;color:var(--green);font-weight:800;margin-top:3px;letter-spacing:1px">FÜHRT</div>':'')+'</div></div></div>'}
-
-  rv.innerHTML=teamHtml+'<div class="cd" style="padding:6px 14px" id="resRows"></div>';
+    teamHtml='<div class="cd" style="margin-bottom:12px;padding:12px;animation:slideIn .4s ease"><div style="display:flex;justify-content:space-between;align-items:center"><div style="text-align:center;flex:1"><div style="font-size:9px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:4px">TEAM A 🟠</div><div style="font-size:18px;font-weight:700">🪙 <span style="font-family:var(--mono);color:'+(aWon?"var(--gold)":"var(--sub)")+'">'+Math.round(ts.a)+'</span></div>'+(aWon?'<div style="font-size:9px;color:var(--green);font-weight:800;margin-top:3px">FÜHRT</div>':'')+'</div><div style="font-size:11px;color:var(--sub);font-weight:900;padding:0 8px">VS</div><div style="text-align:center;flex:1"><div style="font-size:9px;color:var(--sub);font-weight:800;letter-spacing:2px;margin-bottom:4px">TEAM B 🔵</div><div style="font-size:18px;font-weight:700">🪙 <span style="font-family:var(--mono);color:'+(!aWon?"var(--blue)":"var(--sub)")+'">'+Math.round(ts.b)+'</span></div>'+(!aWon?'<div style="font-size:9px;color:var(--green);font-weight:800;margin-top:3px">FÜHRT</div>':'')+'</div></div></div>'}
+  rv.innerHTML=teamHtml+'<div class="cd" style="padding:6px 12px" id="resRows"></div>';
   var container=$("resRows");if(!container)return;
-
   reversed.forEach(function(r,ri){
-    var origIdx=res.length-1-ri;
+    var origIdx=res.length-1-ri;var rank=r.rank||origIdx+1;
     var delay=ri*perPlayer;
     setTimeout(function(){
-      var medal=origIdx===0?"🥇":origIdx===1?"🥈":origIdx===2?"🥉":"#"+(origIdx+1);
-      var isMe=r.pid===room.myId;var isWinner=origIdx===0;
+      var medal=rank===1?"🥇":rank===2?"🥈":rank===3?"🥉":"<span style='font-size:12px;color:var(--sub);font-weight:800'>#"+rank+"</span>";
+      var isMe=r.pid===room.myId;var isWinner=rank===1;
       var pl=room.players.find(function(p){return p.id===r.pid});
-      var pts=sc[r.pid]||0;var base=r.baseCoins||0;
+      var pts=sc[r.pid]||0;var coins=r.baseCoins||0;
       var teamBadge=room.format==="teams"&&pl&&pl.team?'<span style="font-size:7px;color:'+(pl.team==="a"?"var(--gold)":"var(--blue)")+';background:'+(pl.team==="a"?"rgba(255,107,107,.08)":"rgba(94,184,255,.08)")+';padding:2px 5px;border-radius:999px;margin-left:4px;font-weight:800">'+(pl.team==="a"?"A":"B")+'</span>':'';
-
+      /* Format value based on mode */
+      var valTxt=r.value.toFixed(3)+'s Abweichung';
+      if(room.mode==="reaction")valTxt=r.value.toFixed(3)+'s Reaktion';
+      if(room.mode==="tapfrenzy"){var taps=Math.round((rd.duration||5)/Math.max(0.01,r.value));valTxt=taps+' Taps';}
       var row=document.createElement("div");
-      row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:"+(isWinner?"20px 10px":"12px 6px")+";border-bottom:"+(origIdx<res.length-1?"1px solid var(--border)":"none")+";animation:"+(isWinner?"pop .5s ease":"slideIn .4s ease")+" both"+(isWinner?";background:rgba(255,107,107,.08);border-radius:20px;margin:4px -6px;box-shadow:0 2px 12px rgba(255,107,107,.1)":"");
-      row.innerHTML='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:'+(isWinner?'24':origIdx<3?'18':'12')+'px;width:24px;text-align:center">'+medal+'</span><div style="width:'+(isWinner?50:36)+'px;height:'+(isWinner?50:36)+'px;border-radius:50%;background:#fff;border:'+(isWinner?"3px":"2.5px")+' solid '+(isMe?"var(--gold)":"var(--border)")+';display:flex;align-items:center;justify-content:center;box-shadow:'+(isWinner?"0 3px 14px rgba(255,107,107,.2)":isMe?"0 2px 10px rgba(255,107,107,.15)":"none")+'">'+avHTML(r.avatar,isWinner?34:24)+'</div><div><div style="font-size:'+(isWinner?'15':'12')+'px;font-weight:900;color:'+(isMe?"var(--gold)":"var(--text)")+'">'+r.name+teamBadge+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--sub);font-weight:500;margin-top:1px">'+r.value.toFixed(3)+'s</div></div></div><div style="text-align:right"><div style="font-size:'+(isWinner?'16':'13')+'px;font-weight:800;color:'+(isWinner?"var(--gold)":"var(--text)")+'">🪙 +'+base+'</div><div style="font-size:8px;color:var(--sub);font-weight:700;margin-top:1px">Total: '+pts+'</div></div>';
+      row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:"+(isWinner?"18px 10px":"11px 6px")+";border-bottom:"+(origIdx<res.length-1?"1px solid var(--border)":"none")+";animation:"+(isWinner?"pop .5s ease":"slideIn .4s ease")+" both"+(isWinner?";background:rgba(255,107,107,.06);border-radius:18px;margin:4px -4px":"");
+      row.innerHTML='<div style="display:flex;align-items:center;gap:8px"><div style="width:28px;text-align:center;font-size:'+(rank<=3?'20':'12')+'px">'+medal+'</div>'+
+        '<div style="width:'+(isWinner?46:34)+'px;height:'+(isWinner?46:34)+'px;border-radius:50%;background:#fff;border:'+(isWinner?"3px":"2px")+' solid '+(isMe?"var(--gold)":"var(--border)")+';display:flex;align-items:center;justify-content:center;box-shadow:'+(isWinner?"0 3px 12px rgba(255,107,107,.15)":"none")+'">'+avHTML(r.avatar,isWinner?32:22)+'</div>'+
+        '<div><div style="font-size:'+(isWinner?'14':'12')+'px;font-weight:900;color:'+(isMe?"var(--gold)":"var(--text)")+'">'+r.name+teamBadge+'</div>'+
+        '<div style="font-family:var(--mono);font-size:9px;color:var(--sub);font-weight:500;margin-top:1px">'+valTxt+'</div></div></div>'+
+        '<div style="text-align:right"><div style="font-size:'+(isWinner?'15':'12')+'px;font-weight:800;color:'+(isWinner?"var(--gold)":"var(--text)")+'">🪙 +'+coins+'</div>'+
+        '<div style="font-size:8px;color:var(--sub);font-weight:700;margin-top:1px">Total: '+pts+'</div></div>';
       container.appendChild(row);
-
       sfxTick();vb(15);
       if(isWinner){sfxGood();vbSuccess();screenFlash("rgba(255,107,107,.15)",200);
         if(isMe)setTimeout(function(){spawnConfetti(25)},200)}
-      /* Show nav after last reveal */
-      if(ri===reversed.length-1){
-        var nav=$("resNav");if(nav)nav.style.display="block";nav.style.animation="fadeIn .4s ease"}
+      if(ri===reversed.length-1){var nav=$("resNav");if(nav){nav.style.display="block";nav.style.animation="fadeIn .4s ease"}}
     },delay);
   });
 },totalDelay);
