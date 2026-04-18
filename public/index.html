@@ -321,7 +321,7 @@ html+='</div>';
 /* MODE PICKER (when wheel off) */
 if(!wh){
 html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;justify-content:center">';
-["bullseye","timesense","memory","reaction","countdown"].forEach(function(mid){
+["bullseye","timesense","memory","reaction","countdown","tapfrenzy"].forEach(function(mid){
 var mi=MI[mid];var on=sm.indexOf(mid)>=0;
 html+='<div onclick="toggleMode(\''+mid+'\')" style="padding:10px 14px;border-radius:16px;cursor:pointer;display:flex;align-items:center;gap:6px;border:'+(on?"2px solid "+mi.color:"1.5px solid var(--border)")+';background:'+(on?mi.color+"10":"var(--surf)")+';transition:all .2s"><span style="font-size:16px">'+mi.icon+'</span><span style="font-size:10px;font-weight:800;color:'+(on?mi.color:"var(--sub)")+';letter-spacing:.5px">'+mi.name.toUpperCase()+'</span></div>'});
 html+='</div>'}
