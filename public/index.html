@@ -234,7 +234,7 @@ document.addEventListener("touchstart",function(){
 so.on("reconnect",function(){if(window._lastRoomCode&&myName){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r){if(r&&r.ok){lastPhase="";so.emit("requestSync")}else{
   setTimeout(function(){if(window._lastRoomCode&&myName&&so.connected){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r2){if(r2&&r2.ok){lastPhase="";so.emit("requestSync")}else{window._lastRoomCode=null}})}},2000)
 }})}});
-so.on("sync",function(data){room=data;if(room.code)window._lastRoomCode=room.code;if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound}if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}if(room.phase==="playing"&&lastPhase==="playing"&&!submitted)return;if(room.phase===lastPhase&&(room.phase==="results"||room.phase==="gameover"||room.phase==="pregame"||room.phase==="elimination"))return;if(room.phase==="spin"&&lastPhase==="spin"){renderSpinBets();return}lastPhase=room.phase;render()});
+so.on("sync",function(data){room=data;if(room.code)window._lastRoomCode=room.code;if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound}if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}if(room.phase==="playing"&&lastPhase==="playing"&&!submitted)return;if(room.phase===lastPhase&&(room.phase==="results"||room.phase==="gameover"||room.phase==="pregame"||room.phase==="elimination"))return;if(room.phase==="spin"&&lastPhase==="spin"){return}lastPhase=room.phase;render()});
 so.on("zeitStop",function(d){if(submitted||!room||room.phase!=="playing"||room.mode!=="timesense")return;if(room.currentRound!==lastRound)return;window._zeitActual=d.actual;clearTimeout(window._tsWait);clearTimeout(window._tsMax);sfxStop();vb([80,30,80]);renderZeitInput()});
 so.on("spectatorUpdate",function(data){if(!room||!room.players)return;var me=room.players.find(function(p){return p.id===room.myId});if(!me||!me.eliminated)return;if(data.pid!==_spectating)return;if(data.periodic){var m=$("specMirror");if(!m)return;var cd=m.querySelector("#cdDisp");if(cd&&data.displayValue!==undefined){var spd=(data.progress||0)<.3?"var(--text)":(data.progress||0)<.7?"#F472B6":"#F43F5E";cd.innerHTML='<span style="color:'+spd+'">'+data.displayValue+'</span><span style="font-size:16px;color:var(--sub)">s</span>'}return}window._specState=data;renderSpectatorView()});
 function render(){if(!room)return;switch(room.phase){case"lobby":renderLobby();break;case"pregame":renderPreGame();break;case"spin":renderSpin();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"elimination":renderElimination();break;case"gameover":renderGameOver();break}}
@@ -343,53 +343,6 @@ $("app").innerHTML=html}
 function renderPreGame(){var ps=room.players.filter(function(p){return p.connected});var isHost=room.hostId===room.myId;$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:14px"><div style="font-family:var(--f);font-size:22px;font-weight:900;color:var(--gold);letter-spacing:4px;margin-bottom:4px">TIME<span style="color:#F43F5E;font-size:1.3em">2</span>TAP</div><div style="font-size:10px;color:var(--sub);margin-bottom:24px;font-weight:700;letter-spacing:2px">'+(room.format==="ffa"?"ALLE GEGEN ALLE":"TEAM VS TEAM")+'</div><div class="cd" style="margin-bottom:22px;text-align:left"><div style="font-size:12px;color:var(--sub);line-height:1.8;font-weight:600">Jede Runde wird ein zufälliges Spiel gedreht. Bullseye, Zeitgefühl, Memory, Reaktion oder Countdown — seid bereit für alles!</div></div><div class="cd" style="margin-bottom:24px"><div class="lb">Spieler</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:14px">'+ps.map(function(p){return'<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--border);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)">'+avHTML(p.avatar,40)+'</div><div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">'+p.name+'</div></div>'}).join('')+'</div></div>'+(isHost?'<button class="btn" onclick="so.emit(\'startFirstRound\')">Los geht\'s</button>':'<div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div>')+'</div>'}
 
 /* ══ SPIN WHEEL ══ */
-function betStatusHTML(){
-  if(!room)return'';
-  var active=room.players.filter(function(p){return!p.eliminated&&p.connected});
-  var bets=room.bets||{};
-  var betCount=active.filter(function(p){return bets[p.id]}).length;
-  var allBet=betCount>=active.length;
-  var html='<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:14px">';
-  active.forEach(function(p){
-    var hasBet=bets[p.id];
-    html+='<div style="display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:'+(hasBet?"rgba(52,211,153,.1)":"rgba(0,0,0,.04)")+';border:1.5px solid '+(hasBet?"#34D399":"var(--border)")+';transition:all .3s">'+avHTML(p.avatar,20)+'<span style="font-size:9px;font-weight:700;color:'+(hasBet?"#34D399":"var(--sub)")+'">'+p.name+'</span>'+(hasBet?'<span style="font-size:8px">✓</span>':'')+'</div>'});
-  html+='</div>';
-  html+='<div style="font-size:10px;color:var(--sub);margin-top:8px;font-weight:700">'+betCount+'/'+active.length+' bereit</div>';
-  return html;
-}
-
-function betUI(){
-  var myBet=room&&room.bets&&room.bets[room.myId];
-  if(myBet){
-    var active=room.players.filter(function(p){return!p.eliminated&&p.connected});
-    var bets=room.bets||{};
-    var allBet=active.every(function(p){return bets[p.id]});
-    var isHost=room.hostId===room.myId;
-    return '<div style="margin-top:16px"><div style="font-size:14px;font-weight:800;color:var(--gold);letter-spacing:1px;margin-bottom:6px">'+_betLabels[myBet]+'</div>'+
-    betStatusHTML()+
-    (allBet&&isHost?'<button class="btn" style="margin-top:16px" onclick="so.emit(\'beginPlay\')">Start!</button>':
-     allBet?'<div style="font-size:11px;color:var(--sub);margin-top:14px;font-weight:700;animation:breathe 2s ease infinite">Warte auf Host...</div>':
-     '<div style="font-size:11px;color:var(--sub);margin-top:14px;font-weight:700;animation:breathe 2s ease infinite">Warte auf alle Wetten...</div>')+
-    '</div>';
-  }
-  return '<div style="margin-top:16px"><div class="lb">WETTEINSATZ</div>'+
-  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;max-width:320px;margin-left:auto;margin-right:auto">'+
-    '<div onclick="doPlaceBet(\'easy\')" style="padding:14px 8px;border-radius:18px;background:rgba(52,211,153,.08);border:2px solid #34D399;cursor:pointer;text-align:center"><div style="font-size:11px;font-weight:900;color:#34D399;letter-spacing:1px">EINFACH</div><div style="font-size:16px;margin:6px 0">🪙 20</div><div style="font-size:9px;color:var(--sub);font-weight:700">±0.200s → +60</div></div>'+
-    '<div onclick="doPlaceBet(\'medium\')" style="padding:14px 8px;border-radius:18px;background:rgba(232,160,53,.08);border:2px solid #FBBF24;cursor:pointer;text-align:center"><div style="font-size:11px;font-weight:900;color:#FBBF24;letter-spacing:1px">MITTEL</div><div style="font-size:16px;margin:6px 0">🪙 50</div><div style="font-size:9px;color:var(--sub);font-weight:700">±0.100s → +150</div></div>'+
-    '<div onclick="doPlaceBet(\'hard\')" style="padding:14px 8px;border-radius:18px;background:rgba(244,63,94,.08);border:2px solid #F43F5E;cursor:pointer;text-align:center"><div style="font-size:11px;font-weight:900;color:#F43F5E;letter-spacing:1px">SCHWER</div><div style="font-size:16px;margin:6px 0">🪙 100</div><div style="font-size:9px;color:var(--sub);font-weight:700">±0.050s → +300</div></div>'+
-    '<div onclick="doPlaceBet(\'skip\')" style="padding:14px 8px;border-radius:18px;background:var(--surf);border:2px solid var(--border);cursor:pointer;text-align:center"><div style="font-size:11px;font-weight:900;color:var(--sub);letter-spacing:1px">SKIP</div><div style="font-size:16px;margin:6px 0">⏭️</div><div style="font-size:9px;color:var(--sub);font-weight:700">-10 Münzen</div></div>'+
-  '</div>'+betStatusHTML()+'</div>'
-}
-var _betLabels={easy:"🟢 EINFACH",medium:"🟡 MITTEL",hard:"🔴 SCHWER",skip:"⏭️ SKIP"};
-function doPlaceBet(type){so.emit("placeBet",{bet:type})}
-function renderSpinBets(){
-  if(!room||room.phase!=="spin")return;
-  var sr=$("spinResult");
-  if(sr){sr.innerHTML='<div style="animation:fadeIn .2s ease"><div style="font-family:var(--f);font-size:14px;font-weight:900;color:'+(MI[room.mode]||MI.bullseye).color+';letter-spacing:2px;margin-bottom:2px">'+(MI[room.mode]||MI.bullseye).name.toUpperCase()+'</div>'+betUI()+'</div>';return}
-  var ba=$("app");if(!ba)return;
-  var m=MI[room.mode]||MI.bullseye;
-  ba.innerHTML='<div class="ct" style="padding-top:16px"><div class="lb">Runde '+room.currentRound+'</div><div style="font-size:12px;color:var(--sub);margin-bottom:14px;font-weight:700">'+room.players.filter(function(p){return!p.eliminated&&p.connected}).length+' Spieler</div><div style="position:relative;width:72px;height:72px;margin:0 auto 12px"><div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,'+m.color+'cc,'+m.color+');display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 4px 0 rgba(0,0,0,.12),0 6px 20px '+m.color+'40">'+m.icon+'</div></div><div style="font-family:var(--f);font-size:15px;font-weight:900;color:'+m.color+';letter-spacing:2px;margin-bottom:2px">'+m.name.toUpperCase()+'</div>'+betUI()+'</div>';
-}
 
 function renderSpin(){
 var mode=room.mode;var m=MI[mode];var isHost=room.hostId===room.myId;
@@ -398,7 +351,6 @@ var wh=room.wheelEnabled!==false;
 var alreadyShown=window._spinShown===room.currentRound;
 
 if(!wh||alreadyShown){
-/* NO WHEEL or already shown — direct bet view */
 window._spinShown=room.currentRound;
 $("app").innerHTML=
 '<div class="ct" style="'+(alreadyShown?'':'animation:pop .5s ease;')+'padding-top:16px">'+
@@ -407,29 +359,30 @@ $("app").innerHTML=
 '<div style="position:relative;width:72px;height:72px;margin:0 auto 12px">'+
   '<div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,'+m.color+'cc,'+m.color+');display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 4px 0 rgba(0,0,0,.12),0 6px 20px '+m.color+'40">'+m.icon+'</div>'+
 '</div>'+
-'<div style="font-family:var(--f);font-size:15px;font-weight:900;color:'+m.color+';letter-spacing:2px;margin-bottom:2px">'+m.name.toUpperCase()+'</div>'+
-betUI()+
+'<div style="font-family:var(--f);font-size:15px;font-weight:900;color:'+m.color+';letter-spacing:2px;margin-bottom:4px">'+m.name.toUpperCase()+'</div>'+
+'<div style="font-size:11px;color:var(--sub);font-weight:600;margin-bottom:20px">'+m.desc+'</div>'+
+(isHost?'<button class="btn" onclick="so.emit(\'beginPlay\')">Start!</button>':'<div style="font-size:11px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf Host...</div>')+
 '</div>';
 if(!alreadyShown){sfxGo();vb([60,30,60,30,100])}
 return}
 
 /* WHEEL — first render with animation */
 window._spinShown=room.currentRound;
-var colors=["#FF6B6B","#5EB8FF","#34D399","#FBBF24","#F472B6"];
-var icons=["🎯","🧠","💾","⚡","⏱"];
+var segN=SEGS.length;var segAng=360/segN;
 var modeIdx=SEGS.findIndex(function(s){return s.id===mode});
-var targetAngle=360*4+(324-modeIdx*72);
+var targetAngle=360*4+(360-segAng/2-modeIdx*segAng);
 var svg='<svg viewBox="0 0 240 240" width="200" height="200" style="display:block;margin:0 auto">';
 svg+='<circle cx="120" cy="120" r="118" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="4"/>';
-for(var i=0;i<5;i++){
-  var a1=i*72-90,a2=(i+1)*72-90,r=110,cx=120,cy=120;
+for(var i=0;i<segN;i++){
+  var a1=i*segAng-90,a2=(i+1)*segAng-90,r=110,cx=120,cy=120;
   var x1=cx+r*Math.cos(a1*Math.PI/180),y1=cy+r*Math.sin(a1*Math.PI/180);
   var x2=cx+r*Math.cos(a2*Math.PI/180),y2=cy+r*Math.sin(a2*Math.PI/180);
-  svg+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 0,1 '+x2+','+y2+' Z" fill="'+colors[i]+'" opacity="0.85"/>';
+  var lg=segAng>180?1:0;
+  svg+='<path d="M'+cx+','+cy+' L'+x1+','+y1+' A'+r+','+r+' 0 '+lg+',1 '+x2+','+y2+' Z" fill="'+SEGS[i].color+'" opacity="0.85"/>';
   svg+='<line x1="'+cx+'" y1="'+cy+'" x2="'+x1+'" y2="'+y1+'" stroke="#fff" stroke-width="3"/>';
   var midA=(a1+a2)/2,ir=64;
   var ix=cx+ir*Math.cos(midA*Math.PI/180),iy=cy+ir*Math.sin(midA*Math.PI/180);
-  svg+='<text x="'+ix+'" y="'+iy+'" text-anchor="middle" dominant-baseline="central" font-size="30">'+icons[i]+'</text>';
+  svg+='<text x="'+ix+'" y="'+iy+'" text-anchor="middle" dominant-baseline="central" font-size="28">'+(MI[SEGS[i].id]||{icon:"?"}).icon+'</text>';
 }
 svg+='<circle cx="120" cy="120" r="26" fill="#fff" stroke="rgba(0,0,0,.08)" stroke-width="1.5"/>';
 svg+='<circle cx="120" cy="120" r="5" fill="var(--gold)"/>';
@@ -449,8 +402,9 @@ setTimeout(function(){
   var sr=$("spinResult");if(!sr)return;
   sr.innerHTML=
   '<div style="animation:pop .4s ease">'+
-  '<div style="font-family:var(--f);font-size:14px;font-weight:900;color:'+m.color+';letter-spacing:2px;margin-bottom:2px">'+m.name.toUpperCase()+'</div>'+
-  betUI()+
+  '<div style="font-family:var(--f);font-size:14px;font-weight:900;color:'+m.color+';letter-spacing:2px;margin-bottom:4px">'+m.name.toUpperCase()+'</div>'+
+  '<div style="font-size:11px;color:var(--sub);font-weight:600;margin-bottom:16px">'+m.desc+'</div>'+
+  (isHost?'<button class="btn" onclick="so.emit(\'beginPlay\')">Start!</button>':'<div style="font-size:11px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf Host...</div>')+
   '</div>';
 },3200);
 }
@@ -663,12 +617,12 @@ setTimeout(function(){
       var medal=origIdx===0?"🥇":origIdx===1?"🥈":origIdx===2?"🥉":"#"+(origIdx+1);
       var isMe=r.pid===room.myId;var isWinner=origIdx===0;
       var pl=room.players.find(function(p){return p.id===r.pid});
-      var pts=sc[r.pid]||0;var base=r.baseCoins||0;var betR=r.betResult||0;
+      var pts=sc[r.pid]||0;var base=r.baseCoins||0;
       var teamBadge=room.format==="teams"&&pl&&pl.team?'<span style="font-size:7px;color:'+(pl.team==="a"?"var(--gold)":"var(--blue)")+';background:'+(pl.team==="a"?"rgba(255,107,107,.08)":"rgba(94,184,255,.08)")+';padding:2px 5px;border-radius:999px;margin-left:4px;font-weight:800">'+(pl.team==="a"?"A":"B")+'</span>':'';
 
       var row=document.createElement("div");
       row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:"+(isWinner?"20px 10px":"12px 6px")+";border-bottom:"+(origIdx<res.length-1?"1px solid var(--border)":"none")+";animation:"+(isWinner?"pop .5s ease":"slideIn .4s ease")+" both"+(isWinner?";background:rgba(255,107,107,.08);border-radius:20px;margin:4px -6px;box-shadow:0 2px 12px rgba(255,107,107,.1)":"");
-      row.innerHTML='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:'+(isWinner?'24':origIdx<3?'18':'12')+'px;width:24px;text-align:center">'+medal+'</span><div style="width:'+(isWinner?50:36)+'px;height:'+(isWinner?50:36)+'px;border-radius:50%;background:#fff;border:'+(isWinner?"3px":"2.5px")+' solid '+(isMe?"var(--gold)":"var(--border)")+';display:flex;align-items:center;justify-content:center;box-shadow:'+(isWinner?"0 3px 14px rgba(255,107,107,.2)":isMe?"0 2px 10px rgba(255,107,107,.15)":"none")+'">'+avHTML(r.avatar,isWinner?34:24)+'</div><div><div style="font-size:'+(isWinner?'15':'12')+'px;font-weight:900;color:'+(isMe?"var(--gold)":"var(--text)")+'">'+r.name+teamBadge+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--sub);font-weight:500;margin-top:1px">'+r.value.toFixed(3)+'s</div></div></div><div style="text-align:right"><div style="font-size:'+(isWinner?'16':'13')+'px;font-weight:800;color:'+(isWinner?"var(--gold)":"var(--text)")+'">🪙 +'+base+(betR!==0?'<span style="font-size:10px;color:'+(betR>0?"#34D399":"#F43F5E")+'"> '+(betR>0?"+":"")+betR+'</span>':'')+'</div><div style="font-size:8px;color:var(--sub);font-weight:700;margin-top:1px">Total: '+pts+'</div></div>';
+      row.innerHTML='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:'+(isWinner?'24':origIdx<3?'18':'12')+'px;width:24px;text-align:center">'+medal+'</span><div style="width:'+(isWinner?50:36)+'px;height:'+(isWinner?50:36)+'px;border-radius:50%;background:#fff;border:'+(isWinner?"3px":"2.5px")+' solid '+(isMe?"var(--gold)":"var(--border)")+';display:flex;align-items:center;justify-content:center;box-shadow:'+(isWinner?"0 3px 14px rgba(255,107,107,.2)":isMe?"0 2px 10px rgba(255,107,107,.15)":"none")+'">'+avHTML(r.avatar,isWinner?34:24)+'</div><div><div style="font-size:'+(isWinner?'15':'12')+'px;font-weight:900;color:'+(isMe?"var(--gold)":"var(--text)")+'">'+r.name+teamBadge+'</div><div style="font-family:var(--mono);font-size:10px;color:var(--sub);font-weight:500;margin-top:1px">'+r.value.toFixed(3)+'s</div></div></div><div style="text-align:right"><div style="font-size:'+(isWinner?'16':'13')+'px;font-weight:800;color:'+(isWinner?"var(--gold)":"var(--text)")+'">🪙 +'+base+'</div><div style="font-size:8px;color:var(--sub);font-weight:700;margin-top:1px">Total: '+pts+'</div></div>';
       container.appendChild(row);
 
       sfxTick();vb(15);
