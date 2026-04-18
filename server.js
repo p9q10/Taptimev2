@@ -6,7 +6,7 @@ const rooms=new Map();
 const CH="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function mkCode(){let c;do{c="";for(let i=0;i<4;i++)c+=CH[Math.floor(Math.random()*CH.length)]}while(rooms.has(c));return c}
 function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a}
-const GAME_MODES=["bullseye","timesense","memory","reaction","countdown"];
+const GAME_MODES=["bullseye","timesense","memory","reaction","countdown","tapfrenzy"];
 function pickMode(room){
   var pool=room.selectedModes&&room.selectedModes.length>0?room.selectedModes:GAME_MODES;
   var h=room.modeHistory||[];
@@ -35,6 +35,7 @@ function genRoundData(mode,format){
     }
     case"reaction":return{greenIdx:rng(0,9)};
     case"countdown":return{targetTime:parseFloat((2+Math.random()*6).toFixed(1)),duration:7000,power:2.5};
+    case"tapfrenzy":return{duration:parseFloat(([3,4,5,5,6,7][rng(0,5)]).toFixed(0))};
     default:return{};
   }
 }
