@@ -930,33 +930,32 @@ function rocketPlay(){
   '<div style="position:relative;width:100%;height:calc(100dvh - 40px);overflow:hidden;touch-action:none;user-select:none">'+
   '<div id="rkBg" style="position:absolute;inset:0;transition:background 3s ease;background:'+rkSky().bg+'"></div>'+
   '<div id="rkEnv" style="position:absolute;inset:0;z-index:1;pointer-events:none"></div>'+
-  /* HUD */
-  '<div style="position:absolute;top:0;left:0;right:0;z-index:20;padding:48px 12px 0;pointer-events:none">'+
-    '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
-      '<div><div id="rkPts" style="padding:5px 14px;border-radius:999px;background:rgba(0,0,0,.3);backdrop-filter:blur(6px);font-family:var(--mono);font-size:15px;font-weight:700;color:#FFD860">⚡ 15</div>'+
-      '<div id="rkLvl" style="padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.15);font-size:9px;font-weight:800;color:rgba(255,255,255,.5);margin-top:4px;text-align:center">LVL 1</div></div>'+
-      '<div style="text-align:center"><div id="rkScore" style="padding:3px 12px;border-radius:999px;background:rgba(0,0,0,.15);font-family:var(--mono);font-size:11px;font-weight:700;color:rgba(255,255,255,.5)">SCORE 0</div></div>'+
-      '<div style="text-align:right"><div id="rkHeart" style="padding:4px 10px;border-radius:999px;background:rgba(255,60,60,.15);font-size:13px;letter-spacing:2px">❤️❤️❤️</div></div>'+
+  /* HUD — big score centered */
+  '<div style="position:absolute;top:0;left:0;right:0;z-index:20;padding:44px 12px 0;pointer-events:none">'+
+    '<div style="text-align:center;margin-bottom:5px"><div id="rkScore" style="font-family:var(--mono);font-size:36px;color:#fff;font-weight:700;line-height:1;text-shadow:0 3px 12px rgba(0,0,0,.25)">0</div><div style="font-size:7px;color:rgba(255,255,255,.3);font-weight:800;letter-spacing:2px">PUNKTE</div></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center">'+
+      '<div id="rkPts" style="font-family:var(--mono);font-size:11px;color:#FFD860;padding:4px 10px;background:rgba(0,0,0,.25);border-radius:999px;backdrop-filter:blur(6px)">⚡ 15</div>'+
+      '<div id="rkLvl" style="font-family:var(--ft);font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px">LVL 1</div>'+
+      '<div id="rkHeart" style="padding:4px 8px;background:rgba(255,60,60,.12);border-radius:999px;font-size:12px">❤️❤️❤️</div>'+
     '</div>'+
     '<div id="rkCombo" style="text-align:center;font-family:var(--ft);font-size:13px;color:#FFD860;opacity:0;margin-top:4px;transition:opacity .3s"></div>'+
   '</div>'+
   /* Game area */
   '<div id="rkArea" style="position:absolute;inset:0;z-index:5;overflow:hidden"></div>'+
-  /* Laser SVG overlay */
   '<svg id="rkLaser" style="position:absolute;inset:0;z-index:8;pointer-events:none" width="100%" height="100%"></svg>'+
   /* Rocket */
   '<div id="rkShip" style="position:absolute;bottom:28%;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none">'+rkRocketSVG(1,48)+'</div>'+
+  /* Timer ring around rocket (SVG) */
+  '<svg id="rkTimerRing" style="display:none;position:absolute;bottom:calc(28% - 20px);left:50%;transform:translateX(-50%);width:86px;height:110px;z-index:11;pointer-events:none" viewBox="0 0 86 110"><circle cx="43" cy="55" r="40" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="3"/><circle id="rkTimerArc" cx="43" cy="55" r="40" fill="none" stroke="#FFD860" stroke-width="3" stroke-dasharray="251" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 43 55)"/></svg>'+
+  /* Countdown number above rocket */
+  '<div id="rkPowCount" style="display:none;position:absolute;bottom:calc(28% + 70px);left:50%;transform:translateX(-50%);z-index:12;pointer-events:none;font-family:var(--ft);font-size:24px;color:#FFD860;text-shadow:0 0 12px rgba(255,216,96,.3)"></div>'+
   /* Shield bubble */
   '<div id="rkShield" style="display:none;position:absolute;bottom:calc(28% - 14px);left:50%;transform:translateX(-50%);width:74px;height:96px;border-radius:50%;border:2.5px solid rgba(80,255,176,.3);background:radial-gradient(circle,rgba(80,255,176,.04),transparent);z-index:11;pointer-events:none"></div>'+
-  /* Edge glow */
   '<div id="rkEdge" style="position:absolute;inset:0;border:3px solid transparent;border-radius:0;pointer-events:none;z-index:14;opacity:0;transition:border-color .3s,opacity .3s"></div>'+
-  /* Touch zone for steering */
   '<div id="rkTouch" style="position:absolute;bottom:0;left:0;right:0;height:100%;z-index:12"></div>'+
-  /* Flash */
   '<div id="rkFlash" style="position:absolute;inset:0;z-index:25;pointer-events:none;opacity:0;transition:opacity .15s"></div>'+
-  /* Power-up timer bar */
-  '<div id="rkPowBar" style="display:none;position:absolute;bottom:10px;left:14px;right:14px;z-index:26;pointer-events:none"><div style="width:100%;height:5px;border-radius:3px;background:rgba(0,0,0,.2);overflow:hidden"><div id="rkPowFill" style="width:100%;height:100%;border-radius:3px;transition:width .15s linear"></div></div><div id="rkPowLabel" style="font-family:var(--ft);font-size:9px;text-align:center;margin-top:2px;letter-spacing:1px"></div></div>'+
-  /* Level up */
+  /* Power-up timer bar at bottom */
+  '<div id="rkPowBar" style="display:none;position:absolute;bottom:10px;left:14px;right:14px;z-index:26;pointer-events:none"><div style="width:100%;height:6px;border-radius:3px;background:rgba(0,0,0,.2);overflow:hidden"><div id="rkPowFill" style="width:100%;height:100%;border-radius:3px;transition:width .15s linear"></div></div><div style="display:flex;justify-content:space-between;margin-top:2px"><div id="rkPowName" style="font-family:var(--ft);font-size:9px;letter-spacing:1px"></div><div id="rkPowSecs" style="font-family:var(--mono);font-size:9px"></div></div></div>'+
   '<div id="rkLevelUp" style="position:absolute;top:28%;left:0;right:0;z-index:30;text-align:center;pointer-events:none;opacity:0;transition:opacity .5s"></div>'+
   '</div>';
   _rk.area=$('rkArea');_rk.areaW=_rk.area.offsetWidth;_rk.areaH=_rk.area.offsetHeight;
@@ -1003,25 +1002,35 @@ function rkSpawnBlock(type){
   var bw=rkBlockW(),bh=Math.round(bw*.5);
   if(type==='portal'){bw=Math.max(90,bw+30);bh=Math.round(bw*.45)}
   if(type==='bonus'){bw=Math.max(54,bw-4);bh=Math.round(bw*.48)}
-  if(type==='power'){bw=Math.max(60,bw);bh=Math.round(bw*.5)}
   var x=5+Math.random()*((_rk.areaW||300)-bw-10);
   var hp=type==='obs'?rkObsHP():type==='portal'?rkPortalHP():type==='power'?2:rkBonusHP();
   var reward=type==='obs'?rkReward(hp):type==='bonus'?Math.ceil(hp*3):0;
-  var bg,brd,tc;
   var powType=null;
-  if(type==='portal'){bg='linear-gradient(180deg,#208060,#106040)';brd='2.5px solid #40FFB0';tc='#80FFD0'}
-  else if(type==='bonus'){bg='linear-gradient(180deg,#C89820,#A07810)';brd='2px solid #FFD860';tc='#FFE880'}
-  else if(type==='power'){powType=RK_POW[Math.floor(Math.random()*RK_POW.length)];bg=powType.bg;brd=powType.brd;tc=powType.tc}
-  else{bg='linear-gradient(180deg,#505868,#384050)';brd='2px solid #687080';tc='#C0C8D0'}
   var d=document.createElement('div');d.id='rkbl'+id;
-  var glow=type==='power'?';box-shadow:0 0 14px rgba(255,255,255,.15),0 3px 10px rgba(0,0,0,.25)':';box-shadow:0 3px 10px rgba(0,0,0,.25)';
-  d.style.cssText='position:absolute;top:-'+bh+'px;left:'+x+'px;width:'+bw+'px;height:'+bh+'px;border-radius:10px;background:'+bg+';border:'+brd+';display:flex;align-items:center;justify-content:center;z-index:6;pointer-events:none'+glow;
-  var icon=type==='portal'?'🌀 ':type==='bonus'?'⭐ ':type==='power'?powType.emoji+' ':'';
-  d.innerHTML='<span style="font-family:var(--ft);font-size:'+(type==='portal'?'18':type==='power'?'16':'15')+'px;color:'+tc+';text-shadow:0 2px 6px rgba(0,0,0,.3);pointer-events:none">'+icon+hp+'</span>';
+  if(type==='power'){
+    /* ROUND ORB */
+    powType=RK_POW[Math.floor(Math.random()*RK_POW.length)];
+    var sz=56;bw=sz;bh=sz;x=5+Math.random()*((_rk.areaW||300)-sz-10);
+    d.style.cssText='position:absolute;top:-'+sz+'px;left:'+x+'px;width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:radial-gradient(circle at 35% 35%,'+powType.tc+','+powType.color+');border:'+powType.brd+';display:flex;align-items:center;justify-content:center;z-index:7;pointer-events:none;box-shadow:0 0 18px rgba(255,255,255,.15),0 3px 8px rgba(0,0,0,.2)';
+    d.innerHTML='<span style="font-size:24px;pointer-events:none">'+powType.emoji+'</span>';
+    /* Outer glow ring */
+    var ring=document.createElement('div');
+    ring.style.cssText='position:absolute;top:-'+(sz+10)+'px;left:'+(x-5)+'px;width:'+(sz+10)+'px;height:'+(sz+10)+'px;border-radius:50%;border:1.5px solid '+powType.color+';opacity:.25;pointer-events:none;z-index:7';
+    ring.id='rkring'+id;
+    _rk.area.appendChild(ring);
+  }else{
+    var bg,brd,tc;
+    if(type==='portal'){bg='linear-gradient(180deg,#208060,#106040)';brd='2.5px solid #40FFB0';tc='#80FFD0'}
+    else if(type==='bonus'){bg='linear-gradient(180deg,#C89820,#A07810)';brd='2px solid #FFD860';tc='#FFE880'}
+    else{bg='linear-gradient(180deg,#505868,#384050)';brd='2px solid #687080';tc='#C0C8D0'}
+    d.style.cssText='position:absolute;top:-'+bh+'px;left:'+x+'px;width:'+bw+'px;height:'+bh+'px;border-radius:10px;background:'+bg+';border:'+brd+';display:flex;align-items:center;justify-content:center;z-index:6;box-shadow:0 3px 10px rgba(0,0,0,.25);pointer-events:none';
+    var icon=type==='portal'?'🌀 ':type==='bonus'?'⭐ ':'';
+    d.innerHTML='<span style="font-family:var(--ft);font-size:'+(type==='portal'?'18':'15')+'px;color:'+tc+';text-shadow:0 2px 6px rgba(0,0,0,.3);pointer-events:none">'+icon+hp+'</span>';
+  }
   _rk.area.appendChild(d);
   var spd=rkSpeed();
-  if(type==='portal')spd*=.5;else if(type==='bonus')spd*=.7;else if(type==='power')spd*=.6;else spd*=(.8+Math.random()*.4);
-  _rk.blocks.push({id:id,el:d,x:x,y:-bh,w:bw,h:bh,hp:hp,maxHp:hp,type:type,speed:spd,reward:reward,powType:powType});
+  if(type==='portal')spd*=.5;else if(type==='bonus')spd*=.7;else if(type==='power')spd*=.55;else spd*=(.8+Math.random()*.4);
+  _rk.blocks.push({id:id,el:d,x:x,y:-(type==='power'?56:bh),w:bw,h:bh,hp:hp,maxHp:hp,type:type,speed:spd,reward:reward,powType:powType});
 }
 
 /* ══ LASER HIT ══ */
@@ -1045,6 +1054,7 @@ function rkLaserHit(bl){
     }
     rkExplode(bl);
     if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);
+    var rng=$('rkring'+bl.id);if(rng&&rng.parentNode)rng.parentNode.removeChild(rng);
     var idx=_rk.blocks.indexOf(bl);if(idx>=0)_rk.blocks.splice(idx,1);
   }else{
     var icon=bl.type==='portal'?'🌀 ':bl.type==='bonus'?'⭐ ':bl.type==='power'?bl.powType.emoji+' ':'';
@@ -1087,7 +1097,7 @@ function rkExplode(bl){
 function rkUpdateHUD(){
   var pe=$('rkPts');if(pe){pe.textContent='⚡ '+_rk.pts;pe.style.color=_rk.pts<5?'#FF6050':'#FFD860'}
   var le=$('rkLvl');if(le)le.textContent='LVL '+_rk.level;
-  var sc=$('rkScore');if(sc)sc.textContent='SCORE '+_rk.score;
+  var sc=$('rkScore');if(sc)sc.textContent=_rk.score;
   var he=$('rkHeart');if(he){var h='';for(var i=0;i<3;i++)h+=i<_rk.lives?'❤️':'🖤';he.textContent=h}
 }
 
@@ -1096,6 +1106,7 @@ function rkHitRocket(bl){
   _rk.lives--;_rk.combo=0;sfxBad();vb([60,20,40]);
   var fl=$('rkFlash');if(fl){fl.style.background='rgba(255,60,40,.25)';fl.style.opacity='1';setTimeout(function(){if(fl)fl.style.opacity='0'},250)}
   if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);
+  var rng=$('rkring'+bl.id);if(rng&&rng.parentNode)rng.parentNode.removeChild(rng);
   var idx=_rk.blocks.indexOf(bl);if(idx>=0)_rk.blocks.splice(idx,1);
   rkUpdateHUD();
   if(_rk.lives<=0)rocketGameOver('crash');
@@ -1140,13 +1151,22 @@ function rkGameLoop(now){
       var edge=$('rkEdge');if(edge){edge.style.opacity='0'}
       var sh=$('rkShield');if(sh)sh.style.display='none';
       var pb=$('rkPowBar');if(pb)pb.style.display='none';
+      var tr=$('rkTimerRing');if(tr)tr.style.display='none';
+      var pc=$('rkPowCount');if(pc)pc.style.display='none';
     }else{
-      /* Update HUD bar */
       var pw=RK_POW.find(function(p){return p.id===_rk.pow});
       if(pw){
+        var pct=_rk.powTimer/pw.dur;
+        /* Bottom bar */
         var pb2=$('rkPowBar');if(pb2)pb2.style.display='block';
-        var pf=$('rkPowFill');if(pf){pf.style.width=(_rk.powTimer/pw.dur*100)+'%';pf.style.background=pw.bar}
-        var pl=$('rkPowLabel');if(pl){pl.textContent=pw.emoji+' '+pw.label+' — '+_rk.powTimer.toFixed(1)+'s';pl.style.color=pw.color}
+        var pf=$('rkPowFill');if(pf){pf.style.width=(pct*100)+'%';pf.style.background=pw.bar}
+        var pn=$('rkPowName');if(pn){pn.textContent=pw.emoji+' '+pw.label;pn.style.color=pw.color}
+        var ps=$('rkPowSecs');if(ps){ps.textContent=_rk.powTimer.toFixed(1)+'s';ps.style.color=pw.color}
+        /* Timer ring around rocket */
+        var tr2=$('rkTimerRing');if(tr2){tr2.style.display='block';tr2.style.left=shipPX+'px';tr2.style.transform='translateX(-50%)'}
+        var arc=$('rkTimerArc');if(arc){arc.setAttribute('stroke',pw.color);arc.setAttribute('stroke-dashoffset',Math.round(251*(1-pct)))}
+        /* Big countdown number */
+        var pc2=$('rkPowCount');if(pc2){pc2.style.display='block';pc2.textContent=Math.ceil(_rk.powTimer);pc2.style.color=pw.color;pc2.style.left=shipPX+'px'}
       }
       if(_rk.pow==='slow')slowMul=0.3;
     }
@@ -1220,6 +1240,8 @@ function rkGameLoop(now){
   for(var i=_rk.blocks.length-1;i>=0;i--){
     var bl=_rk.blocks[i];bl.y+=bl.speed*slowMul*dt;
     if(bl.el)bl.el.style.top=bl.y+'px';
+    /* Move glow ring for power orbs */
+    if(bl.type==='power'){var ring=$('rkring'+bl.id);if(ring)ring.style.top=(bl.y-5)+'px'}
     /* Hit rocket */
     if(bl.y+bl.h>shipY&&bl.y<shipY+shipH&&bl.x+bl.w>shipPX-shipW/2&&bl.x<shipPX+shipW/2){
       if(_rk.pow==='shield'){
@@ -1242,7 +1264,7 @@ function rkGameLoop(now){
   /* Combo display */
   var ce=$('rkCombo');if(ce){ce.textContent='×'+_rk.combo;ce.style.opacity=_rk.combo>=5?'1':'0'}
   /* Score ticks */
-  _rk.score+=Math.floor(dt);var sc=$('rkScore');if(sc)sc.textContent='SCORE '+_rk.score;
+  _rk.score+=Math.floor(dt);var sc=$('rkScore');if(sc)sc.textContent=_rk.score;
   _rk.frame=requestAnimationFrame(rkGameLoop);
 }
 
