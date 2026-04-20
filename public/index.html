@@ -797,7 +797,7 @@ function renderElimination(){sfxElim();vbElim();stopMusic();screenShake();screen
 function renderGameOver(){submitted=false;sfxWin();vb([40,20,40,20,40,20,80]);stopTension();startMusic();screenFlash("rgba(232,160,53,.15)",250);setTimeout(function(){spawnConfetti(30)},300);var sc=room.finalScores||{};var sorted=Object.entries(sc).sort(function(a,b){return b[1]-a[1]});var isHost=room.hostId===room.myId;var isTeams=room.format==="teams";var winBanner='';if(isTeams){var tA=0,cA=0,tB=0,cB=0;room.players.forEach(function(p){var pts=sc[p.id]||0;if(p.team==="a"){tA+=pts;cA++}else if(p.team==="b"){tB+=pts;cB++}});var avgA=cA?tA/cA:0;var avgB=cB?tB/cB:0;var wTeam=avgA>=avgB?"a":"b";winBanner='<div class="ct" style="margin-bottom:28px"><div style="font-size:72px;animation:float 2.5s ease infinite">🏆</div><div style="font-family:var(--f);font-size:18px;color:'+(wTeam==="a"?"var(--gold)":"var(--blue)")+';margin-top:14px;letter-spacing:3px;font-weight:900">TEAM '+(wTeam==="a"?"A 🟠":"B 🔵")+' GEWINNT!</div><div style="display:flex;justify-content:center;gap:28px;margin-top:16px"><div style="text-align:center"><div style="font-size:10px;color:var(--sub);font-weight:800;letter-spacing:1px">Team A</div><div style="font-size:22px;font-weight:700;margin-top:4px">🪙 <span style="font-family:var(--mono);color:'+(wTeam==="a"?"var(--gold)":"var(--sub)")+'">'+avgA.toFixed(1)+'</span></div><div style="font-size:8px;color:var(--sub);font-weight:700;margin-top:2px">⌀ pro Spieler</div></div><div style="text-align:center"><div style="font-size:10px;color:var(--sub);font-weight:800;letter-spacing:1px">Team B</div><div style="font-size:22px;font-weight:700;margin-top:4px">🪙 <span style="font-family:var(--mono);color:'+(wTeam==="b"?"var(--blue)":"var(--sub)")+'">'+avgB.toFixed(1)+'</span></div><div style="font-size:8px;color:var(--sub);font-weight:700;margin-top:2px">⌀ pro Spieler</div></div></div></div>'}else{var winner=room.players.find(function(p){return!p.eliminated&&p.connected});winBanner='<div class="ct" style="margin-bottom:28px"><div style="font-size:72px;animation:float 2.5s ease infinite">🏆</div>'+(winner?'<div style="margin-top:8px">'+avHTML(winner.avatar,60)+'</div><div style="font-family:var(--f);font-size:16px;color:var(--gold);margin-top:12px;letter-spacing:3px;font-weight:900">'+winner.name.toUpperCase()+' GEWINNT!</div>':'<div style="font-family:var(--f);font-size:16px;color:var(--gold);margin-top:14px;letter-spacing:4px;font-weight:900">SPIEL VORBEI</div>')+'</div>'}var html='<div style="animation:pop .5s ease">'+winBanner+'<div class="cd" style="margin-bottom:24px;padding:8px 14px">';sorted.forEach(function(e,i){var pid=e[0],pts=e[1];var p=room.players.find(function(x){return x.id===pid});if(!p)return;var medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);var isW=i===0;var teamBadge=isTeams&&p.team?'<span style="font-size:8px;color:'+(p.team==="a"?"var(--gold)":"var(--blue)")+';background:'+(p.team==="a"?"rgba(255,107,107,.08)":"rgba(94,184,255,.08)")+';padding:2px 6px;border-radius:999px;margin-left:6px;font-weight:800">'+(p.team==="a"?"A":"B")+'</span>':'';html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:'+(isW?"18px 8px":"12px 8px")+';border-bottom:'+(i<sorted.length-1?"1px solid var(--border)":"none")+';animation:slideIn .4s ease '+(i*.1)+'s both'+(isW?';background:rgba(255,107,107,.04);border-radius:16px;margin:0 -4px;padding:18px 12px':'')+'"><div style="display:flex;align-items:center;gap:12px"><span style="font-size:'+(isW?'23':'17')+'px;width:28px">'+medal+'</span><div style="width:'+(isW?56:44)+'px;height:'+(isW?56:44)+'px;border-radius:50%;background:#fff;border:2.5px solid '+(isW?"var(--gold)":"var(--border)")+';display:flex;align-items:center;justify-content:center;box-shadow:'+(isW?"0 2px 12px rgba(255,107,107,.15)":"none")+'">'+avHTML(p.avatar,32)+'</div><span style="font-size:'+(isW?'16':'13')+'px;font-weight:900;color:'+(isW?"var(--gold)":"var(--text)")+'">'+p.name+teamBadge+(p.eliminated?' <span style="font-size:9px;color:#F43F5E;font-weight:800">✕</span>':'')+'</span></div><div style="font-size:'+(isW?'19':'14')+'px;font-weight:700;color:'+(isW?"var(--gold)":"var(--sub)")+'">🪙 <span style="font-family:var(--mono)">'+pts+'</span></div></div>'});html+='</div>';if(isHost)html+='<div class="ct" style="margin-bottom:16px"><button class="btn" onclick="so.emit(\'playAgain\')">Nochmal</button></div>';html+='<div class="ct"><button class="btn2" onclick="home()">← Startseite</button></div></div>';$("app").innerHTML=html}
 /* ══════════════════════════════════════════════════════ */
 /* ══ ROCKET RISE v4 — LASER BEAM ══ */
-var _rk={running:false,level:1,lives:3,score:0,pts:15,combo:0,maxCombo:0,
+var _rk={running:false,level:1,score:0,pts:20,combo:0,maxCombo:0,altitude:0,
   blocks:[],shots:[],idC:0,frame:null,lastTick:0,spawnT:null,
   rocketStage:1,portalSpawned:false,
   highscore:0,bestLevel:0,
@@ -900,18 +900,17 @@ function rocketStart(){
   '<div style="font-size:10px;color:var(--sub);letter-spacing:3px;margin-top:2px;font-weight:700">RETTE DIE RAKETE</div>'+
   '<div style="margin:16px auto;animation:float 3s ease-in-out infinite">'+rkRocketSVG(1,65)+'</div>'+
   '<div style="display:flex;gap:14px;justify-content:center;margin:12px 0">'+
-    '<div style="padding:7px 14px;border-radius:12px;background:rgba(0,0,0,.05)"><div style="font-size:7px;color:var(--sub);font-weight:800">HIGHSCORE</div><div style="font-family:var(--mono);font-size:18px;color:var(--gold)">'+_rk.highscore+'</div></div>'+
+    '<div style="padding:7px 14px;border-radius:12px;background:rgba(0,0,0,.05)"><div style="font-size:7px;color:var(--sub);font-weight:800">HIGHSCORE</div><div style="font-family:var(--mono);font-size:18px;color:var(--gold)">'+_rk.highscore+'m</div></div>'+
     '<div style="padding:7px 14px;border-radius:12px;background:rgba(0,0,0,.05)"><div style="font-size:7px;color:var(--sub);font-weight:800">BESTES LVL</div><div style="font-family:var(--mono);font-size:18px;color:var(--green)">'+(_rk.bestLevel||1)+'</div></div>'+
   '</div>'+
   '<div style="padding:10px 14px;border-radius:14px;background:rgba(0,0,0,.03);margin:0 16px 14px;font-size:9px;color:var(--sub);font-weight:700;line-height:1.7;text-align:left">'+
     '<b style="color:var(--text)">So gehts:</b><br>'+
     '👆 <b>Steuere</b> die Rakete links/rechts<br>'+
-    '🔫 Laser feuert einzelne Schüsse nach oben<br>'+
-    '🧱 Schuss trifft Block → Zahl sinkt (kostet 1⚡)<br>'+
-    '💥 Block bei 0 → zerstört → <b>Punkte zurück!</b><br>'+
+    '🔫 Laser feuert Schüsse (kostet ⚡ Energie)<br>'+
+    '💥 Block zerstört → <b>Energie zurück!</b><br>'+
+    '⚠️ Block durchgelassen → <b>Energie weg!</b><br>'+
     '🌀 <b style="color:#40C090">Portal</b> zerstören = nächstes Level<br>'+
-    '⚠️ Block berührt Rakete = Leben weg<br>'+
-    '⚠️ Zu wenig Punkte fürs Portal = Game Over'+
+    '🔋 Energie = 0 → Game Over'+
   '</div>'+
   '<button class="btn btn-green" onclick="rocketPlay()" style="font-size:18px;padding:16px 50px;max-width:260px">🚀 STARTEN</button>'+
   '<button class="btn2" onclick="home()" style="margin-top:10px;font-size:10px">← Zurück</button></div>';
@@ -919,7 +918,7 @@ function rocketStart(){
 
 /* ══ PLAY ══ */
 function rocketPlay(){
-  _rk.running=true;_rk.level=1;_rk.lives=3;_rk.score=0;_rk.pts=15;
+  _rk.running=true;_rk.level=1;_rk.score=0;_rk.pts=20;_rk.altitude=0;
   _rk.combo=0;_rk.maxCombo=0;_rk.blocks=[];_rk.shots=[];_rk.idC=0;
   _rk.rocketStage=1;_rk.portalSpawned=false;_rk.rocketX=.5;_rk.targetX=.5;
   _rk.pow=null;_rk.powTimer=0;_rk.powLastSpawn=0;_rk.ultraActive=false;_rk.ultraY=0;
@@ -932,11 +931,11 @@ function rocketPlay(){
   '<div id="rkEnv" style="position:absolute;inset:0;z-index:1;pointer-events:none"></div>'+
   /* HUD — big score centered */
   '<div style="position:absolute;top:0;left:0;right:0;z-index:20;padding:44px 12px 0;pointer-events:none">'+
-    '<div style="text-align:center;margin-bottom:5px"><div id="rkScore" style="font-family:var(--mono);font-size:36px;color:#fff;font-weight:700;line-height:1;text-shadow:0 3px 12px rgba(0,0,0,.25)">0</div><div style="font-size:7px;color:rgba(255,255,255,.3);font-weight:800;letter-spacing:2px">PUNKTE</div></div>'+
+    '<div style="text-align:center;margin-bottom:5px"><div id="rkScore" style="font-family:var(--mono);font-size:36px;color:#fff;font-weight:700;line-height:1;text-shadow:0 3px 12px rgba(0,0,0,.25)">0m</div><div style="font-size:7px;color:rgba(255,255,255,.3);font-weight:800;letter-spacing:2px">HÖHE</div></div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center">'+
-      '<div id="rkPts" style="font-family:var(--mono);font-size:11px;color:#FFD860;padding:4px 10px;background:rgba(0,0,0,.25);border-radius:999px;backdrop-filter:blur(6px)">⚡ 15</div>'+
+      '<div id="rkPts" style="font-family:var(--mono);font-size:11px;color:#FFD860;padding:4px 10px;background:rgba(0,0,0,.25);border-radius:999px;backdrop-filter:blur(6px)">⚡ 20</div>'+
       '<div id="rkLvl" style="font-family:var(--ft);font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px">LVL 1</div>'+
-      '<div id="rkHeart" style="padding:4px 8px;background:rgba(255,60,60,.12);border-radius:999px;font-size:12px">❤️❤️❤️</div>'+
+      '<div id="rkAlt" style="font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.35);padding:4px 8px;background:rgba(0,0,0,.12);border-radius:999px">↑ 0m</div>'+
     '</div>'+
     '<div id="rkCombo" style="text-align:center;font-family:var(--ft);font-size:13px;color:#FFD860;opacity:0;margin-top:4px;transition:opacity .3s"></div>'+
   '</div>'+
@@ -1097,19 +1096,27 @@ function rkExplode(bl){
 function rkUpdateHUD(){
   var pe=$('rkPts');if(pe){pe.textContent='⚡ '+_rk.pts;pe.style.color=_rk.pts<5?'#FF6050':'#FFD860'}
   var le=$('rkLvl');if(le)le.textContent='LVL '+_rk.level;
-  var sc=$('rkScore');if(sc)sc.textContent=_rk.score;
-  var he=$('rkHeart');if(he){var h='';for(var i=0;i<3;i++)h+=i<_rk.lives?'❤️':'🖤';he.textContent=h}
+  var sc=$('rkScore');if(sc)sc.textContent=_rk.score+'m';
+  var al=$('rkAlt');if(al)al.textContent='↑ '+_rk.score+'m';
 }
 
 /* ══ COLLISION ══ */
 function rkHitRocket(bl){
-  _rk.lives--;_rk.combo=0;sfxBad();vb([60,20,40]);
-  var fl=$('rkFlash');if(fl){fl.style.background='rgba(255,60,40,.25)';fl.style.opacity='1';setTimeout(function(){if(fl)fl.style.opacity='0'},250)}
+  /* Block hits rocket = its remaining HP drained from energy */
+  var drain=bl.hp;
+  _rk.pts-=drain;_rk.combo=0;sfxBad();vb([40,20,30]);
+  /* Show drain */
+  var pop=document.createElement('div');
+  pop.style.cssText='position:absolute;top:'+bl.y+'px;left:'+(bl.x+bl.w/2)+'px;transform:translateX(-50%);font-family:var(--ft);font-size:14px;color:#FF6050;pointer-events:none;z-index:22;animation:slideUp .6s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.3)';
+  pop.textContent='-'+drain+'⚡';
+  if(_rk.area)_rk.area.appendChild(pop);
+  setTimeout(function(){if(pop.parentNode)pop.parentNode.removeChild(pop)},700);
+  var fl=$('rkFlash');if(fl){fl.style.background='rgba(255,60,40,.2)';fl.style.opacity='1';setTimeout(function(){if(fl)fl.style.opacity='0'},200)}
   if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);
   var rng=$('rkring'+bl.id);if(rng&&rng.parentNode)rng.parentNode.removeChild(rng);
   var idx=_rk.blocks.indexOf(bl);if(idx>=0)_rk.blocks.splice(idx,1);
   rkUpdateHUD();
-  if(_rk.lives<=0)rocketGameOver('crash');
+  if(_rk.pts<=0){_rk.pts=0;rocketGameOver('energy')}
 }
 
 /* ══ LEVEL UP ══ */
@@ -1253,18 +1260,29 @@ function rkGameLoop(now){
       if(_rk.pow==='ultra'){continue}/* Ultra: immune */
       rkHitRocket(bl);if(!_rk.running)return;continue;
     }
-    /* Off screen */
+    /* Off screen — block escaped */
     if(bl.y>_rk.areaH+10){
       if(bl.type==='portal'){rocketGameOver('portal');return}
+      /* Drain remaining HP from energy! */
+      if(bl.type==='obs'&&bl.hp>0){
+        _rk.pts-=bl.hp;
+        sfx(200,.04,'sawtooth',.08);vb(20);
+        var pe2=$('rkPts');if(pe2){pe2.style.color='#FF6050';setTimeout(function(){var pe3=$('rkPts');if(pe3)pe3.style.color=_rk.pts<5?'#FF6050':'#FFD860'},200)}
+        rkUpdateHUD();
+        if(_rk.pts<=0){_rk.pts=0;rocketGameOver('energy');return}
+      }
       _rk.combo=0;
       if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);
+      var rng2=$('rkring'+bl.id);if(rng2&&rng2.parentNode)rng2.parentNode.removeChild(rng2);
       _rk.blocks.splice(i,1);
     }
   }
   /* Combo display */
   var ce=$('rkCombo');if(ce){ce.textContent='×'+_rk.combo;ce.style.opacity=_rk.combo>=5?'1':'0'}
-  /* Score ticks */
-  _rk.score+=Math.floor(dt);var sc=$('rkScore');if(sc)sc.textContent=_rk.score;
+  /* Altitude ticks up (like Doodle Jump) */
+  _rk.altitude+=rkSpeed()*dt*.15;_rk.score=Math.floor(_rk.altitude);
+  var sc=$('rkScore');if(sc)sc.textContent=_rk.score+'m';
+  var al=$('rkAlt');if(al)al.textContent='↑ '+_rk.score+'m';
   _rk.frame=requestAnimationFrame(rkGameLoop);
 }
 
@@ -1275,9 +1293,9 @@ function rocketGameOver(reason){
   var isNew=sc>_rk.highscore;if(isNew)_rk.highscore=sc;
   if(_rk.level>_rk.bestLevel)_rk.bestLevel=_rk.level;rkSaveHigh();
   if(isNew){sfxWin();setTimeout(function(){spawnConfetti(30)},300)}else{sfxBad();vb([60,30,60])}
-  var emoji=reason==='portal'?'🚫':'💥';
-  var title=reason==='portal'?'PORTAL VERPASST':'MISSION GESCHEITERT';
-  var sub=reason==='portal'?'Portal nicht rechtzeitig zerstört!':'3 Treffer — Rakete zerstört';
+  var emoji=reason==='portal'?'🚫':'🔋';
+  var title=reason==='portal'?'PORTAL VERPASST':'ENERGIE LEER';
+  var sub=reason==='portal'?'Portal nicht rechtzeitig zerstört!':'Keine Energie mehr für den Laser!';
   setTimeout(function(){
   $('app').innerHTML='<div class="ct" style="animation:pop .5s ease;padding-top:18px">'+
     '<div style="font-size:48px;margin-bottom:6px">'+emoji+'</div>'+
@@ -1285,15 +1303,15 @@ function rocketGameOver(reason){
     '<div style="font-size:10px;color:var(--sub);font-weight:700;margin-top:4px">'+sub+'</div>'+
     '<div class="cd" style="margin:14px 0;padding:16px"><div class="ct">'+
       (isNew?'<div style="font-size:10px;color:var(--green);font-weight:800;letter-spacing:2px;margin-bottom:6px;animation:breathe 2s ease infinite">⭐ NEUER HIGHSCORE ⭐</div>':'')+
-      '<div style="font-family:var(--mono);font-size:38px;color:var(--text);font-weight:500;line-height:1">'+sc+'</div>'+
-      '<div style="font-size:10px;color:var(--sub);font-weight:700;margin-top:4px">PUNKTE</div>'+
+      '<div style="font-family:var(--mono);font-size:38px;color:var(--text);font-weight:500;line-height:1">'+sc+'<span style="font-size:16px;color:var(--sub)">m</span></div>'+
+      '<div style="font-size:10px;color:var(--sub);font-weight:700;margin-top:4px">HÖHE ERREICHT</div>'+
       '<div style="display:flex;justify-content:center;gap:14px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">'+
         '<div><div style="font-size:7px;color:var(--sub);font-weight:800">LEVEL</div><div style="font-family:var(--ft);font-size:18px;color:var(--gold);margin-top:2px">'+_rk.level+'</div></div>'+
         '<div><div style="font-size:7px;color:var(--sub);font-weight:800">RAKETE</div><div style="margin-top:4px">'+rkRocketSVG(_rk.rocketStage,26)+'</div></div>'+
         '<div><div style="font-size:7px;color:var(--sub);font-weight:800">COMBO</div><div style="font-family:var(--mono);font-size:18px;color:var(--text);margin-top:2px">×'+_rk.maxCombo+'</div></div>'+
         '<div><div style="font-size:7px;color:var(--sub);font-weight:800">ZERSTÖRT</div><div style="font-family:var(--mono);font-size:18px;color:var(--green);margin-top:2px">'+_rk.totalDestroyed+'</div></div>'+
       '</div>'+
-      (!isNew?'<div style="font-size:9px;color:var(--sub);font-weight:700;margin-top:8px">Bester: '+_rk.highscore+'</div>':'')+
+      (!isNew?'<div style="font-size:9px;color:var(--sub);font-weight:700;margin-top:8px">Bester: '+_rk.highscore+'m</div>':'')+
     '</div></div>'+
     '<button class="btn" onclick="rocketPlay()" style="margin-bottom:8px">🔄 NOCHMAL</button>'+
     '<button class="btn2" onclick="home()">← Hauptmenü</button></div>';
