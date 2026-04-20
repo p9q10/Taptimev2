@@ -901,8 +901,8 @@ function rocketStart(){
     '<b style="color:var(--text)">So gehts:</b><br>'+
     '👆 Tippe <b>graue</b> Trümmer weg<br>'+
     '🔴 <b>Rote</b> Hindernisse sind unzerstörbar!<br>'+
-    '⭐ Sammle Sterne für Portal-Durchflug<br>'+
-    '🌀 Portal braucht Sterne als Eintritt'+
+    '👉 Tippe <b>leere Fläche</b> = Rakete steuern<br>'+
+    '⭐ Sammle Sterne für das Portal'+
   '</div>'+
   '<button class="btn btn-green" onclick="rocketPlay()" style="font-size:18px;padding:18px 50px;max-width:260px">🚀 STARTEN</button>'+
   '<button class="btn2" onclick="home()" style="margin-top:12px;font-size:10px">← Zurück</button></div>';
@@ -933,11 +933,29 @@ function rocketPlay(){
     '<div id="rkCombo" style="text-align:center;font-family:var(--ft);font-size:14px;color:#FFD860;opacity:0;margin-top:4px;transition:opacity .3s"></div>'+
   '</div>'+
   '<div id="rkArea" style="position:absolute;inset:0;z-index:5;overflow:hidden"></div>'+
-  '<div id="rkShip" style="position:absolute;bottom:60px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;transition:left .08s ease-out">'+rkRocketSVG(1,50)+'</div>'+
+  '<div id="rkShip" style="position:absolute;bottom:60px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;transition:left .12s ease-out">'+rkRocketSVG(1,50)+'</div>'+
   '<div id="rkFlash" style="position:absolute;inset:0;z-index:15;pointer-events:none;opacity:0;transition:opacity .2s"></div>'+
   '<div id="rkLevelUp" style="position:absolute;top:30%;left:0;right:0;z-index:25;text-align:center;pointer-events:none;opacity:0;transition:opacity .5s"></div>'+
   '</div>';
   _rk.area=$('rkArea');_rk.areaW=_rk.area.offsetWidth;_rk.areaH=_rk.area.offsetHeight;
+  /* TAP EMPTY SPACE = steer rocket toward tap */
+  _rk.area.addEventListener('touchstart',function(e){
+    if(e.target===_rk.area){/* tapped empty space, not an obstacle */
+      var tx=e.touches[0].clientX;var rx=_rk.area.getBoundingClientRect();
+      var norm=(tx-rx.left)/rx.width;/* 0=left, 1=right */
+      _rk.driftTarget=(norm-.5)*.7;/* -.35 to .35 */
+      _rk.driftV+=(_rk.driftTarget-_rk.driftX)*2;/* immediate kick */
+      vb(5);
+    }
+  },{passive:true});
+  _rk.area.addEventListener('mousedown',function(e){
+    if(e.target===_rk.area){
+      var rx=_rk.area.getBoundingClientRect();
+      var norm=(e.clientX-rx.left)/rx.width;
+      _rk.driftTarget=(norm-.5)*.7;
+      _rk.driftV+=(_rk.driftTarget-_rk.driftX)*2;
+    }
+  });
   rkSpawnClouds();
   _rk.spawnT=setTimeout(rkSpawnLoop,500);
   _rk.frame=requestAnimationFrame(rkGameLoop);
@@ -968,8 +986,8 @@ function rkSpawnObs(){
   if(!_rk.area)return;
   var id=++_rk.idC;
   var solid=Math.random()<rkSolidChance();
-  var w=solid?(20+Math.random()*25):(25+Math.random()*30);
-  var h=solid?(w*.7+Math.random()*8):(15+Math.random()*18);
+  var w=solid?(35+Math.random()*30):(40+Math.random()*35);
+  var h=solid?(w*.6+Math.random()*10):(25+Math.random()*20);
   var x=Math.random()*((_rk.areaW||300)-w);
   var d=document.createElement('div');d.id='rko'+id;
   if(solid){
@@ -1085,15 +1103,15 @@ function rkGameLoop(now){
   var dt=(now-_rk.lastTick)/1000;_rk.lastTick=now;if(dt>0.1)dt=0.1;
   _rk.elapsed+=dt;_rk.levelTimer+=dt;
   var spd=rkSpeed()*dt;
-  /* ── CHAOTIC DRIFT ── */
+  /* ── CHAOTIC DRIFT (slower auto, responsive to player) ── */
   _rk.driftTimer-=dt;
   if(_rk.driftTimer<=0){
-    _rk.driftTarget=(Math.random()-.5)*.6;/* range: -.3 to .3 */
-    if(Math.random()<.2)_rk.driftTarget*=1.5;/* occasional big swing */
-    _rk.driftTimer=0.3+Math.random()*0.6;/* change every .3-.9s */
+    _rk.driftTarget=(Math.random()-.5)*.4;/* gentler auto-drift */
+    if(Math.random()<.15)_rk.driftTarget*=1.5;/* rare big swing */
+    _rk.driftTimer=0.5+Math.random()*1.0;/* change every .5-1.5s */
   }
-  var accel=(_rk.driftTarget-_rk.driftX)*4;/* spring-like */
-  _rk.driftV+=accel*dt;_rk.driftV*=0.92;/* dampen */
+  var accel=(_rk.driftTarget-_rk.driftX)*3;
+  _rk.driftV+=accel*dt;_rk.driftV*=0.9;
   _rk.driftX+=_rk.driftV;
   _rk.driftX=Math.max(-.4,Math.min(.4,_rk.driftX));
   var ship=$('rkShip');
