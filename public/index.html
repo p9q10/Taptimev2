@@ -1047,7 +1047,7 @@ function rkLaserHit(bl){
     else if(bl.type==='power'){rkActivatePow(bl.powType);sfxWin()}
     else if(bl.type==='bomb'){rkBombExplode(bl)}
     else{
-      var pts=bl.reward;_rk.pts+=pts;_rk.score+=pts;
+      var pts=bl.reward;_rk.pts+=pts;
       if(bl.type==='bonus')sfxGood();
       var pop=document.createElement('div');
       pop.style.cssText='position:absolute;top:'+bl.y+'px;left:'+(bl.x+bl.w/2)+'px;transform:translateX(-50%);font-family:var(--ft);font-size:13px;color:'+(bl.type==='bonus'?'#FFD860':'#80FFA0')+';pointer-events:none;z-index:22;animation:slideUp .6s ease forwards;text-shadow:0 2px 6px rgba(0,0,0,.3)';
@@ -1132,7 +1132,7 @@ function rkBombExplode(bomb){
   }
   /* Credit rewards */
   if(totalReward>0){
-    _rk.pts+=totalReward;_rk.score+=totalReward;
+    _rk.pts+=totalReward;
     var pop=document.createElement('div');
     pop.style.cssText='position:absolute;top:'+cy+'px;left:'+cx+'px;transform:translateX(-50%);font-family:var(--ft);font-size:18px;color:#FF8040;pointer-events:none;z-index:22;animation:slideUp .8s ease forwards;text-shadow:0 2px 8px rgba(0,0,0,.4)';
     pop.textContent='💥 +'+totalReward+'⚡';
@@ -1152,6 +1152,12 @@ function rkUpdateHUD(){
 
 /* ══ COLLISION ══ */
 function rkHitRocket(bl){
+  /* Portal hitting rocket = game over (you failed to destroy it) */
+  if(bl.type==='portal'){
+    if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);
+    var idx0=_rk.blocks.indexOf(bl);if(idx0>=0)_rk.blocks.splice(idx0,1);
+    rocketGameOver('portal');return;
+  }
   /* Block hits rocket = its remaining HP drained from energy */
   var drain=bl.hp;
   _rk.pts-=drain;_rk.combo=0;sfxBad();vb([40,20,30]);
@@ -1173,7 +1179,6 @@ function rkHitRocket(bl){
 function rkLevelUp(){
   _rk.level++;_rk.rocketStage=Math.min(8,_rk.level);_rk.levelTimer=0;_rk.portalSpawned=false;
   _rk.pts+=10;/* bonus energy for next level */
-  _rk.score+=50;
   var names=['','🔧 Repariert!','⚡ Triebwerk!','🔥 Feuer!','💎 Blau!','⚡ High-Tech!','🌟 Plasma!','👑 Legendär!'];
   var msg=names[Math.min(_rk.level-1,7)]||'';
   var lu=$('rkLevelUp');if(lu){
@@ -1198,6 +1203,8 @@ function rkGameLoop(now){
   var ship=$('rkShip');
   var shipPX=_rk.rocketX*_rk.areaW;
   if(ship)ship.style.left=shipPX+'px';
+  /* Shield follows rocket */
+  var shEl=$('rkShield');if(shEl&&_rk.pow==='shield'){shEl.style.left=shipPX+'px'}
   var shipY=Math.round(_rk.areaH*.72-75),shipW=48,shipH=75;
   /* ══ POWER-UP TIMER ══ */
   var slowMul=1;
@@ -1232,12 +1239,14 @@ function rkGameLoop(now){
   if(_rk.pow==='ultra'){
     for(var ui=_rk.blocks.length-1;ui>=0;ui--){
       var ub=_rk.blocks[ui];
-      /* Destroy everything in path */
       if(ub.x+ub.w>shipPX-30&&ub.x<shipPX+30){
-        _rk.totalDestroyed++;_rk.score+=ub.maxHp*2;
-        if(ub.type==='portal')rkLevelUp();
+        _rk.totalDestroyed++;
+        if(ub.type==='portal'){rkLevelUp()}
+        else if(ub.type==='bomb'){rkBombExplode(ub)}
+        else{_rk.pts+=rkReward(ub.maxHp)}
         rkExplode(ub);
         if(ub.el&&ub.el.parentNode)ub.el.parentNode.removeChild(ub.el);
+        var rngUltra=$('rkring'+ub.id);if(rngUltra&&rngUltra.parentNode)rngUltra.parentNode.removeChild(rngUltra);
         _rk.blocks.splice(ui,1);
       }
     }
@@ -1309,9 +1318,12 @@ function rkGameLoop(now){
         continue;
       }
       if(_rk.pow==='ultra'){
-        /* Ultra: destroy block, but portal = level up */
+        /* Ultra: destroy block on contact */
         if(bl.type==='portal'){rkLevelUp()}
-        _rk.totalDestroyed++;_rk.score+=bl.maxHp*2;
+        else if(bl.type==='bomb'){rkBombExplode(bl)}
+        else if(bl.type==='power'&&bl.powType){rkActivatePow(bl.powType)}
+        else{_rk.pts+=rkReward(bl.maxHp)}
+        _rk.totalDestroyed++;
         rkExplode(bl);
         if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);
         var rngU=$('rkring'+bl.id);if(rngU&&rngU.parentNode)rngU.parentNode.removeChild(rngU);
@@ -1322,8 +1334,8 @@ function rkGameLoop(now){
     /* Off screen — block escaped */
     if(bl.y>_rk.areaH+10){
       if(bl.type==='portal'){rocketGameOver('portal');return}
-      /* Drain remaining HP from energy! */
-      if(bl.type==='obs'&&bl.hp>0){
+      /* ALL blocks that escape drain remaining HP from energy */
+      if(bl.hp>0&&bl.type!=='power'){
         _rk.pts-=bl.hp;
         sfx(200,.04,'sawtooth',.08);vb(20);
         var pe2=$('rkPts');if(pe2){pe2.style.color='#FF6050';setTimeout(function(){var pe3=$('rkPts');if(pe3)pe3.style.color=_rk.pts<5?'#FF6050':'#FFD860'},200)}
