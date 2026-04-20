@@ -937,7 +937,7 @@ function rocketPlay(){
   /* Laser SVG overlay */
   '<svg id="rkLaser" style="position:absolute;inset:0;z-index:8;pointer-events:none" width="100%" height="100%"></svg>'+
   /* Rocket */
-  '<div id="rkShip" style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none">'+rkRocketSVG(1,48)+'</div>'+
+  '<div id="rkShip" style="position:absolute;bottom:28%;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none">'+rkRocketSVG(1,48)+'</div>'+
   /* Touch zone for steering */
   '<div id="rkTouch" style="position:absolute;bottom:0;left:0;right:0;height:100%;z-index:12"></div>'+
   /* Flash */
@@ -1096,7 +1096,7 @@ function rkGameLoop(now){
   var ship=$('rkShip');
   var shipPX=_rk.rocketX*_rk.areaW;
   if(ship)ship.style.left=shipPX+'px';
-  var shipY=_rk.areaH-55,shipW=48,shipH=75;
+  var shipY=Math.round(_rk.areaH*.72-75),shipW=48,shipH=75;
   /* ══ LASER ══ */
   /* ══ LASER SHOTS ══ */
   _rk.laserTimer-=dt;
