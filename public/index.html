@@ -798,12 +798,12 @@ function renderGameOver(){submitted=false;sfxWin();vb([40,20,40,20,40,20,80]);st
 /* ══════════════════════════════════════════════════════ */
 /* ══ ROCKET RISE v4 — LASER BEAM ══ */
 var _rk={running:false,level:1,lives:3,score:0,pts:15,combo:0,maxCombo:0,
-  blocks:[],idC:0,frame:null,lastTick:0,spawnT:null,
+  blocks:[],shots:[],idC:0,frame:null,lastTick:0,spawnT:null,
   rocketStage:1,portalSpawned:false,
   highscore:0,bestLevel:0,
   rocketX:.5,areaW:300,areaH:600,area:null,
   elapsed:0,levelTimer:0,totalDestroyed:0,
-  laserHitId:-1,laserTimer:0,laserRate:.12};
+  laserTimer:0,laserRate:.18};
 
 var RK_SKY=[
   {bg:'linear-gradient(180deg,#88D0F0,#70B8E0,#5098C8)',clouds:3,stars:0},
@@ -899,8 +899,8 @@ function rocketStart(){
   '<div style="padding:10px 14px;border-radius:14px;background:rgba(0,0,0,.03);margin:0 16px 14px;font-size:9px;color:var(--sub);font-weight:700;line-height:1.7;text-align:left">'+
     '<b style="color:var(--text)">So gehts:</b><br>'+
     '👆 <b>Steuere</b> die Rakete links/rechts<br>'+
-    '🔫 Laser feuert automatisch nach oben<br>'+
-    '🧱 Laser trifft Block → Zahl sinkt (kostet 1 Punkt)<br>'+
+    '🔫 Laser feuert einzelne Schüsse nach oben<br>'+
+    '🧱 Schuss trifft Block → Zahl sinkt (kostet 1⚡)<br>'+
     '💥 Block bei 0 → zerstört → <b>Punkte zurück!</b><br>'+
     '🌀 <b style="color:#40C090">Portal</b> zerstören = nächstes Level<br>'+
     '⚠️ Block berührt Rakete = Leben weg<br>'+
@@ -913,7 +913,7 @@ function rocketStart(){
 /* ══ PLAY ══ */
 function rocketPlay(){
   _rk.running=true;_rk.level=1;_rk.lives=3;_rk.score=0;_rk.pts=15;
-  _rk.combo=0;_rk.maxCombo=0;_rk.blocks=[];_rk.idC=0;
+  _rk.combo=0;_rk.maxCombo=0;_rk.blocks=[];_rk.shots=[];_rk.idC=0;
   _rk.rocketStage=1;_rk.portalSpawned=false;_rk.rocketX=.5;
   _rk.elapsed=0;_rk.levelTimer=0;_rk.totalDestroyed=0;
   _rk.laserHitId=-1;_rk.laserTimer=0;
@@ -937,7 +937,7 @@ function rocketPlay(){
   /* Laser SVG overlay */
   '<svg id="rkLaser" style="position:absolute;inset:0;z-index:8;pointer-events:none" width="100%" height="100%"></svg>'+
   /* Rocket */
-  '<div id="rkShip" style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none">'+rkRocketSVG(1,48)+'</div>'+
+  '<div id="rkShip" style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;transition:left .05s linear">'+rkRocketSVG(1,48)+'</div>'+
   /* Touch zone for steering */
   '<div id="rkTouch" style="position:absolute;bottom:0;left:0;right:0;height:100%;z-index:12"></div>'+
   /* Flash */
@@ -946,15 +946,13 @@ function rocketPlay(){
   '<div id="rkLevelUp" style="position:absolute;top:28%;left:0;right:0;z-index:30;text-align:center;pointer-events:none;opacity:0;transition:opacity .5s"></div>'+
   '</div>';
   _rk.area=$('rkArea');_rk.areaW=_rk.area.offsetWidth;_rk.areaH=_rk.area.offsetHeight;
-  /* Steering */
+  /* Steering: rocket follows finger X directly */
   var touch=$('rkTouch');
-  var drag={on:false,sx:0,spx:0};
-  touch.addEventListener('touchstart',function(e){e.preventDefault();drag.on=true;drag.sx=e.touches[0].clientX;drag.spx=_rk.rocketX},{passive:false});
-  touch.addEventListener('touchmove',function(e){e.preventDefault();if(!drag.on)return;var d=(e.touches[0].clientX-drag.sx)/_rk.areaW*2.5;_rk.rocketX=Math.max(.08,Math.min(.92,drag.spx+d))},{passive:false});
-  touch.addEventListener('touchend',function(){drag.on=false});
-  touch.addEventListener('mousedown',function(e){drag.on=true;drag.sx=e.clientX;drag.spx=_rk.rocketX;
-    function mm(ev){var d=(ev.clientX-drag.sx)/_rk.areaW*2.5;_rk.rocketX=Math.max(.08,Math.min(.92,drag.spx+d))}
-    function mu(){drag.on=false;document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu)}
+  function rkSetX(cx){var r=_rk.area.getBoundingClientRect();_rk.rocketX=Math.max(.06,Math.min(.94,(cx-r.left)/r.width))}
+  touch.addEventListener('touchstart',function(e){e.preventDefault();rkSetX(e.touches[0].clientX)},{passive:false});
+  touch.addEventListener('touchmove',function(e){e.preventDefault();rkSetX(e.touches[0].clientX)},{passive:false});
+  touch.addEventListener('mousedown',function(e){rkSetX(e.clientX);
+    function mm(ev){rkSetX(ev.clientX)}function mu(){document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu)}
     document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu)});
   rkBuildEnv();
   _rk.spawnT=setTimeout(rkSpawnLoop,700);
@@ -1097,40 +1095,35 @@ function rkGameLoop(now){
   if(ship)ship.style.left=shipPX+'px';
   var shipY=_rk.areaH-55,shipW=48,shipH=75;
   /* ══ LASER ══ */
+  /* ══ LASER SHOTS ══ */
   _rk.laserTimer-=dt;
   var laserSVG=$('rkLaser');
-  var hitBlock=null,hitY=0;
-  /* Find first block in laser path (straight up from rocket) */
-  var lx=shipPX;
-  var closest=null,closestDist=99999;
-  for(var k=0;k<_rk.blocks.length;k++){
-    var bk=_rk.blocks[k];
-    if(lx>=bk.x&&lx<=bk.x+bk.w&&bk.y+bk.h>0&&bk.y<shipY){
-      var dist=shipY-bk.y-bk.h;
-      if(dist<closestDist){closestDist=dist;closest=bk}
-    }
+  /* Spawn new shot */
+  if(_rk.laserTimer<=0&&_rk.pts>0){
+    _rk.laserTimer=_rk.laserRate;
+    _rk.shots.push({x:shipPX,y:shipY-10,speed:800});
+    sfx(500+Math.random()*100,.015,'square',.03);
   }
-  if(closest&&_rk.pts>0){
-    hitBlock=closest;hitY=closest.y+closest.h;
-    /* Draw laser beam */
-    if(laserSVG){
-      var glow=_rk.pts>5?'rgba(255,200,60,.15)':'rgba(255,80,60,.15)';
-      var col=_rk.pts>5?'rgba(255,200,60,.7)':'rgba(255,80,60,.7)';
-      laserSVG.innerHTML='<line x1="'+lx+'" y1="'+shipY+'" x2="'+lx+'" y2="'+hitY+'" stroke="'+col+'" stroke-width="3" stroke-linecap="round"/>'+
-        '<line x1="'+lx+'" y1="'+shipY+'" x2="'+lx+'" y2="'+hitY+'" stroke="'+glow+'" stroke-width="8"/>'+
-        '<circle cx="'+lx+'" cy="'+hitY+'" r="5" fill="'+col+'" opacity=".5"/>';
+  /* Move shots & check collision */
+  var svgH='';
+  for(var si=_rk.shots.length-1;si>=0;si--){
+    var sh=_rk.shots[si];sh.y-=sh.speed*dt;
+    if(sh.y<-10){_rk.shots.splice(si,1);continue}
+    /* Draw shot */
+    svgH+='<rect x="'+(sh.x-2)+'" y="'+sh.y+'" width="4" height="10" rx="2" fill="#FFD860" opacity=".8"/>';
+    svgH+='<rect x="'+(sh.x-1)+'" y="'+(sh.y+2)+'" width="2" height="6" rx="1" fill="#FFF8E0"/>';
+    /* Check hit against blocks */
+    var hit=false;
+    for(var bi=0;bi<_rk.blocks.length;bi++){
+      var bk=_rk.blocks[bi];
+      if(sh.x>=bk.x&&sh.x<=bk.x+bk.w&&sh.y<=bk.y+bk.h&&sh.y>=bk.y){
+        _rk.shots.splice(si,1);hit=true;
+        rkLaserHit(bk);if(!_rk.running)return;break;
+      }
     }
-    /* Apply damage at rate */
-    if(_rk.laserTimer<=0){
-      _rk.laserTimer=_rk.laserRate;
-      rkLaserHit(hitBlock);
-      if(!_rk.running)return;
-    }
-  }else if(laserSVG){
-    /* No target or no ammo — draw dim beam to top */
-    if(_rk.pts>0)laserSVG.innerHTML='<line x1="'+lx+'" y1="'+shipY+'" x2="'+lx+'" y2="0" stroke="rgba(255,200,60,.08)" stroke-width="1.5"/>';
-    else laserSVG.innerHTML='';
+    if(hit)continue;
   }
+  if(laserSVG)laserSVG.innerHTML=svgH;
   /* ══ MOVE BLOCKS ══ */
   for(var i=_rk.blocks.length-1;i>=0;i--){
     var bl=_rk.blocks[i];bl.y+=bl.speed*dt;
