@@ -801,7 +801,7 @@ var _rk={running:false,level:1,lives:3,score:0,pts:15,combo:0,maxCombo:0,
   blocks:[],shots:[],idC:0,frame:null,lastTick:0,spawnT:null,
   rocketStage:1,portalSpawned:false,
   highscore:0,bestLevel:0,
-  rocketX:.5,areaW:300,areaH:600,area:null,
+  rocketX:.5,targetX:.5,areaW:300,areaH:600,area:null,
   elapsed:0,levelTimer:0,totalDestroyed:0,
   laserTimer:0,laserRate:.18};
 
@@ -914,7 +914,7 @@ function rocketStart(){
 function rocketPlay(){
   _rk.running=true;_rk.level=1;_rk.lives=3;_rk.score=0;_rk.pts=15;
   _rk.combo=0;_rk.maxCombo=0;_rk.blocks=[];_rk.shots=[];_rk.idC=0;
-  _rk.rocketStage=1;_rk.portalSpawned=false;_rk.rocketX=.5;
+  _rk.rocketStage=1;_rk.portalSpawned=false;_rk.rocketX=.5;_rk.targetX=.5;
   _rk.elapsed=0;_rk.levelTimer=0;_rk.totalDestroyed=0;
   _rk.laserHitId=-1;_rk.laserTimer=0;
   _rk.lastTick=performance.now();rkLoadHigh();
@@ -937,7 +937,7 @@ function rocketPlay(){
   /* Laser SVG overlay */
   '<svg id="rkLaser" style="position:absolute;inset:0;z-index:8;pointer-events:none" width="100%" height="100%"></svg>'+
   /* Rocket */
-  '<div id="rkShip" style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;transition:left .08s ease-out">'+rkRocketSVG(1,48)+'</div>'+
+  '<div id="rkShip" style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none">'+rkRocketSVG(1,48)+'</div>'+
   /* Touch zone for steering */
   '<div id="rkTouch" style="position:absolute;bottom:0;left:0;right:0;height:100%;z-index:12"></div>'+
   /* Flash */
@@ -946,15 +946,14 @@ function rocketPlay(){
   '<div id="rkLevelUp" style="position:absolute;top:28%;left:0;right:0;z-index:30;text-align:center;pointer-events:none;opacity:0;transition:opacity .5s"></div>'+
   '</div>';
   _rk.area=$('rkArea');_rk.areaW=_rk.area.offsetWidth;_rk.areaH=_rk.area.offsetHeight;
-  /* Steering: small thumb movement = big rocket movement */
+  _rk.targetX=_rk.rocketX;
+  /* Steering: Last War style — finger position = rocket target, smooth follow */
   var touch=$('rkTouch');
-  var _ts={on:false,sx:0,rx:0};
-  touch.addEventListener('touchstart',function(e){e.preventDefault();_ts.on=true;_ts.sx=e.touches[0].clientX;_ts.rx=_rk.rocketX},{passive:false});
-  touch.addEventListener('touchmove',function(e){e.preventDefault();if(!_ts.on)return;var dx=(e.touches[0].clientX-_ts.sx)/_rk.areaW*3.5;_rk.rocketX=Math.max(.05,Math.min(.95,_ts.rx+dx))},{passive:false});
-  touch.addEventListener('touchend',function(){_ts.on=false});
-  touch.addEventListener('mousedown',function(e){_ts.on=true;_ts.sx=e.clientX;_ts.rx=_rk.rocketX;
-    function mm(ev){var dx=(ev.clientX-_ts.sx)/_rk.areaW*3.5;_rk.rocketX=Math.max(.05,Math.min(.95,_ts.rx+dx))}
-    function mu(){_ts.on=false;document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu)}
+  function rkAim(cx){var r=_rk.area.getBoundingClientRect();_rk.targetX=Math.max(.05,Math.min(.95,(cx-r.left)/r.width))}
+  touch.addEventListener('touchstart',function(e){e.preventDefault();rkAim(e.touches[0].clientX)},{passive:false});
+  touch.addEventListener('touchmove',function(e){e.preventDefault();rkAim(e.touches[0].clientX)},{passive:false});
+  touch.addEventListener('mousedown',function(e){rkAim(e.clientX);
+    function mm(ev){rkAim(ev.clientX)}function mu(){document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu)}
     document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu)});
   rkBuildEnv();
   _rk.spawnT=setTimeout(rkSpawnLoop,700);
@@ -1091,7 +1090,9 @@ function rkGameLoop(now){
   if(!_rk.running)return;
   var dt=(now-_rk.lastTick)/1000;_rk.lastTick=now;if(dt>0.1)dt=0.1;
   _rk.elapsed+=dt;_rk.levelTimer+=dt;
-  /* Position rocket */
+  /* Position rocket — smooth follow toward finger */
+  var lerpSpeed=12;/* higher = snappier */
+  _rk.rocketX+=(_rk.targetX-_rk.rocketX)*Math.min(1,lerpSpeed*dt);
   var ship=$('rkShip');
   var shipPX=_rk.rocketX*_rk.areaW;
   if(ship)ship.style.left=shipPX+'px';
