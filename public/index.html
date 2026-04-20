@@ -937,7 +937,7 @@ function rocketPlay(){
   /* Laser SVG overlay */
   '<svg id="rkLaser" style="position:absolute;inset:0;z-index:8;pointer-events:none" width="100%" height="100%"></svg>'+
   /* Rocket */
-  '<div id="rkShip" style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;transition:left .05s linear">'+rkRocketSVG(1,48)+'</div>'+
+  '<div id="rkShip" style="position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;transition:left .08s ease-out">'+rkRocketSVG(1,48)+'</div>'+
   /* Touch zone for steering */
   '<div id="rkTouch" style="position:absolute;bottom:0;left:0;right:0;height:100%;z-index:12"></div>'+
   /* Flash */
@@ -946,13 +946,15 @@ function rocketPlay(){
   '<div id="rkLevelUp" style="position:absolute;top:28%;left:0;right:0;z-index:30;text-align:center;pointer-events:none;opacity:0;transition:opacity .5s"></div>'+
   '</div>';
   _rk.area=$('rkArea');_rk.areaW=_rk.area.offsetWidth;_rk.areaH=_rk.area.offsetHeight;
-  /* Steering: rocket follows finger X directly */
+  /* Steering: small thumb movement = big rocket movement */
   var touch=$('rkTouch');
-  function rkSetX(cx){var r=_rk.area.getBoundingClientRect();_rk.rocketX=Math.max(.06,Math.min(.94,(cx-r.left)/r.width))}
-  touch.addEventListener('touchstart',function(e){e.preventDefault();rkSetX(e.touches[0].clientX)},{passive:false});
-  touch.addEventListener('touchmove',function(e){e.preventDefault();rkSetX(e.touches[0].clientX)},{passive:false});
-  touch.addEventListener('mousedown',function(e){rkSetX(e.clientX);
-    function mm(ev){rkSetX(ev.clientX)}function mu(){document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu)}
+  var _ts={on:false,sx:0,rx:0};
+  touch.addEventListener('touchstart',function(e){e.preventDefault();_ts.on=true;_ts.sx=e.touches[0].clientX;_ts.rx=_rk.rocketX},{passive:false});
+  touch.addEventListener('touchmove',function(e){e.preventDefault();if(!_ts.on)return;var dx=(e.touches[0].clientX-_ts.sx)/_rk.areaW*3.5;_rk.rocketX=Math.max(.05,Math.min(.95,_ts.rx+dx))},{passive:false});
+  touch.addEventListener('touchend',function(){_ts.on=false});
+  touch.addEventListener('mousedown',function(e){_ts.on=true;_ts.sx=e.clientX;_ts.rx=_rk.rocketX;
+    function mm(ev){var dx=(ev.clientX-_ts.sx)/_rk.areaW*3.5;_rk.rocketX=Math.max(.05,Math.min(.95,_ts.rx+dx))}
+    function mu(){_ts.on=false;document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu)}
     document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu)});
   rkBuildEnv();
   _rk.spawnT=setTimeout(rkSpawnLoop,700);
