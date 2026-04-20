@@ -823,12 +823,12 @@ var RK_SKY=[
   {bg:'linear-gradient(180deg,#040308,#020204,#010002)',clouds:0,stars:12}
 ];
 function rkSky(){return RK_SKY[Math.min(_rk.level-1,7)]}
-function rkObsHP(){return Math.floor(2+_rk.level*.6+Math.random()*2)}
+function rkObsHP(){return Math.floor(1+_rk.level*.8+Math.random()*(_rk.level*.4+1))}
 function rkPortalHP(){return Math.round(10+_rk.level*5+Math.pow(_rk.level,1.2)*2)}
 function rkBonusHP(){return Math.max(1,Math.floor(1+_rk.level*.25+Math.random()))}
-function rkSpeed(){return 70+_rk.level*8+Math.min(_rk.elapsed*.1,40)}
-function rkSpawnRate(){return Math.max(400,900-_rk.level*35-Math.min(_rk.elapsed*.3,150))}
-function rkBlockW(){return Math.max(56,82-_rk.level*2)}
+function rkSpeed(){return 80+_rk.level*12+Math.min(_rk.elapsed*.12,50)}
+function rkSpawnRate(){return Math.max(300,850-_rk.level*40-Math.min(_rk.elapsed*.3,150))}
+function rkBlockW(){return Math.max(52,82-_rk.level*2)}
 function rkReward(hp){return Math.ceil(hp*2.2)}
 
 function rkLoadHigh(){try{var d=JSON.parse(localStorage.getItem('t2t_rr4')||'{}');_rk.highscore=d.h||0;_rk.bestLevel=d.l||0}catch(e){}}
@@ -988,6 +988,8 @@ function rkSpawnLoop(){
   rkSpawnBlock('obs');
   if(Math.random()<.1)setTimeout(function(){if(_rk.running)rkSpawnBlock('bonus')},300);
   if(!_rk.portalSpawned&&_rk.levelTimer>10+Math.random()*5){_rk.portalSpawned=true;rkSpawnBlock('portal')}
+  /* Bombs — spawn occasionally, more at higher levels */
+  if(Math.random()<.06+_rk.level*.008)setTimeout(function(){if(_rk.running)rkSpawnBlock('bomb')},150);
   if(_rk.level>=3&&Math.random()<.06+_rk.level*.01)
     for(var i=0;i<1+Math.floor(_rk.level*.3);i++)setTimeout(function(){if(_rk.running)rkSpawnBlock('obs')},i*180);
   /* Power-up spawn every 15-25s */
@@ -1002,21 +1004,22 @@ function rkSpawnBlock(type){
   if(type==='portal'){bw=Math.max(90,bw+30);bh=Math.round(bw*.45)}
   if(type==='bonus'){bw=Math.max(54,bw-4);bh=Math.round(bw*.48)}
   var x=5+Math.random()*((_rk.areaW||300)-bw-10);
-  var hp=type==='obs'?rkObsHP():type==='portal'?rkPortalHP():type==='power'?2:rkBonusHP();
+  var hp=type==='obs'?rkObsHP():type==='portal'?rkPortalHP():type==='power'?2:type==='bomb'?1:rkBonusHP();
   var reward=type==='obs'?rkReward(hp):type==='bonus'?Math.ceil(hp*3):0;
   var powType=null;
   var d=document.createElement('div');d.id='rkbl'+id;
   if(type==='power'){
-    /* ROUND ORB */
     powType=RK_POW[Math.floor(Math.random()*RK_POW.length)];
     var sz=56;bw=sz;bh=sz;x=5+Math.random()*((_rk.areaW||300)-sz-10);
     d.style.cssText='position:absolute;top:-'+sz+'px;left:'+x+'px;width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:radial-gradient(circle at 35% 35%,'+powType.tc+','+powType.color+');border:'+powType.brd+';display:flex;align-items:center;justify-content:center;z-index:7;pointer-events:none;box-shadow:0 0 18px rgba(255,255,255,.15),0 3px 8px rgba(0,0,0,.2)';
     d.innerHTML='<span style="font-size:24px;pointer-events:none">'+powType.emoji+'</span>';
-    /* Outer glow ring */
     var ring=document.createElement('div');
     ring.style.cssText='position:absolute;top:-'+(sz+10)+'px;left:'+(x-5)+'px;width:'+(sz+10)+'px;height:'+(sz+10)+'px;border-radius:50%;border:1.5px solid '+powType.color+';opacity:.25;pointer-events:none;z-index:7';
-    ring.id='rkring'+id;
-    _rk.area.appendChild(ring);
+    ring.id='rkring'+id;_rk.area.appendChild(ring);
+  }else if(type==='bomb'){
+    var bsz=44;bw=bsz;bh=bsz;x=5+Math.random()*((_rk.areaW||300)-bsz-10);
+    d.style.cssText='position:absolute;top:-'+bsz+'px;left:'+x+'px;width:'+bsz+'px;height:'+bsz+'px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FF6040,#C02010);border:2.5px solid #FF4020;display:flex;align-items:center;justify-content:center;z-index:7;pointer-events:none;box-shadow:0 0 14px rgba(255,60,30,.2),0 3px 8px rgba(0,0,0,.2)';
+    d.innerHTML='<span style="font-size:20px;pointer-events:none">💣</span>';
   }else{
     var bg,brd,tc;
     if(type==='portal'){bg='linear-gradient(180deg,#208060,#106040)';brd='2.5px solid #40FFB0';tc='#80FFD0'}
@@ -1028,8 +1031,8 @@ function rkSpawnBlock(type){
   }
   _rk.area.appendChild(d);
   var spd=rkSpeed();
-  if(type==='portal')spd*=.5;else if(type==='bonus')spd*=.7;else if(type==='power')spd*=.55;else spd*=(.8+Math.random()*.4);
-  _rk.blocks.push({id:id,el:d,x:x,y:-(type==='power'?56:bh),w:bw,h:bh,hp:hp,maxHp:hp,type:type,speed:spd,reward:reward,powType:powType});
+  if(type==='portal')spd*=.5;else if(type==='bonus')spd*=.7;else if(type==='power')spd*=.55;else if(type==='bomb')spd*=.6;else spd*=(.8+Math.random()*.4);
+  _rk.blocks.push({id:id,el:d,x:x,y:-(type==='power'?56:type==='bomb'?44:bh),w:bw,h:bh,hp:hp,maxHp:hp,type:type,speed:spd,reward:reward,powType:powType});
 }
 
 /* ══ LASER HIT ══ */
@@ -1042,6 +1045,7 @@ function rkLaserHit(bl){
     _rk.totalDestroyed++;
     if(bl.type==='portal'){rkLevelUp()}
     else if(bl.type==='power'){rkActivatePow(bl.powType);sfxWin()}
+    else if(bl.type==='bomb'){rkBombExplode(bl)}
     else{
       var pts=bl.reward;_rk.pts+=pts;_rk.score+=pts;
       if(bl.type==='bonus')sfxGood();
@@ -1085,11 +1089,57 @@ function rkExplode(bl){
   if(!_rk.area)return;
   for(var i=0;i<8;i++){var p=document.createElement('div');var sz=3+Math.random()*5;
     var dx=(Math.random()-.5)*70,dy=(Math.random()-.5)*50-15;
-    var col=bl.type==='portal'?'#40FFD0':bl.type==='bonus'?'#FFD860':'#8090A0';
+    var col=bl.type==='portal'?'#40FFD0':bl.type==='bonus'?'#FFD860':bl.type==='bomb'?'#FF6040':'#8090A0';
     p.style.cssText='position:absolute;top:'+(bl.y+bl.h/2)+'px;left:'+(bl.x+bl.w/2)+'px;width:'+sz+'px;height:'+sz+'px;border-radius:2px;background:'+col+';pointer-events:none;z-index:21;transition:all .4s ease-out;opacity:1';
     _rk.area.appendChild(p);
     (function(el,ddx,ddy){requestAnimationFrame(function(){el.style.transform='translate('+ddx+'px,'+ddy+'px)';el.style.opacity='0'});
       setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},500)})(p,dx,dy)}
+}
+
+/* ══ BOMB EXPLOSION — destroys everything in radius ══ */
+function rkBombExplode(bomb){
+  var cx=bomb.x+bomb.w/2,cy=bomb.y+bomb.h/2;
+  var radius=100;/* explosion radius in pixels */
+  sfx(150,.08,'sawtooth',.15);sfx(80,.1,'square',.2);vb([40,20,40,20,60]);
+  /* Big explosion visual */
+  if(_rk.area){
+    var exp=document.createElement('div');
+    exp.style.cssText='position:absolute;top:'+(cy-radius)+'px;left:'+(cx-radius)+'px;width:'+(radius*2)+'px;height:'+(radius*2)+'px;border-radius:50%;background:radial-gradient(circle,rgba(255,100,30,.3),rgba(255,60,20,.1),transparent);pointer-events:none;z-index:20;transition:all .5s ease-out;opacity:1';
+    _rk.area.appendChild(exp);
+    requestAnimationFrame(function(){exp.style.transform='scale(1.5)';exp.style.opacity='0'});
+    setTimeout(function(){if(exp.parentNode)exp.parentNode.removeChild(exp)},600);
+  }
+  /* Screen flash */
+  var fl=$('rkFlash');if(fl){fl.style.background='rgba(255,120,40,.2)';fl.style.opacity='1';setTimeout(function(){if(fl)fl.style.opacity='0'},300)}
+  /* Destroy all blocks in radius */
+  var totalReward=0;
+  for(var i=_rk.blocks.length-1;i>=0;i--){
+    var bl=_rk.blocks[i];
+    if(bl===bomb)continue;/* skip the bomb itself */
+    var bx=bl.x+bl.w/2,by=bl.y+bl.h/2;
+    var dist=Math.sqrt((bx-cx)*(bx-cx)+(by-cy)*(by-cy));
+    if(dist<radius){
+      if(bl.type==='portal'){rkLevelUp()}
+      else if(bl.type==='power'){rkActivatePow(bl.powType)}
+      else if(bl.type==='obs'){totalReward+=rkReward(bl.maxHp)}
+      else if(bl.type==='bonus'){totalReward+=Math.ceil(bl.maxHp*3)}
+      _rk.totalDestroyed++;
+      rkExplode(bl);
+      if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);
+      var rng=$('rkring'+bl.id);if(rng&&rng.parentNode)rng.parentNode.removeChild(rng);
+      _rk.blocks.splice(i,1);
+    }
+  }
+  /* Credit rewards */
+  if(totalReward>0){
+    _rk.pts+=totalReward;_rk.score+=totalReward;
+    var pop=document.createElement('div');
+    pop.style.cssText='position:absolute;top:'+cy+'px;left:'+cx+'px;transform:translateX(-50%);font-family:var(--ft);font-size:18px;color:#FF8040;pointer-events:none;z-index:22;animation:slideUp .8s ease forwards;text-shadow:0 2px 8px rgba(0,0,0,.4)';
+    pop.textContent='💥 +'+totalReward+'⚡';
+    if(_rk.area)_rk.area.appendChild(pop);
+    setTimeout(function(){if(pop.parentNode)pop.parentNode.removeChild(pop)},900);
+  }
+  rkUpdateHUD();
 }
 
 /* ══ HUD ══ */
@@ -1251,13 +1301,22 @@ function rkGameLoop(now){
     if(bl.type==='power'){var ring=$('rkring'+bl.id);if(ring)ring.style.top=(bl.y-5)+'px'}
     /* Hit rocket */
     if(bl.y+bl.h>shipY&&bl.y<shipY+shipH&&bl.x+bl.w>shipPX-shipW/2&&bl.x<shipPX+shipW/2){
-      if(_rk.pow==='shield'){
-        /* Shield: block bounces off */
+      if(_rk.pow==='shield'&&bl.type!=='portal'){
+        /* Shield: block bounces off (NOT portals!) */
         if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);
+        var rngS=$('rkring'+bl.id);if(rngS&&rngS.parentNode)rngS.parentNode.removeChild(rngS);
         _rk.blocks.splice(i,1);sfx(300,.03,'sine',.05);
         continue;
       }
-      if(_rk.pow==='ultra'){continue}/* Ultra: immune */
+      if(_rk.pow==='ultra'){
+        /* Ultra: destroy block, but portal = level up */
+        if(bl.type==='portal'){rkLevelUp()}
+        _rk.totalDestroyed++;_rk.score+=bl.maxHp*2;
+        rkExplode(bl);
+        if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);
+        var rngU=$('rkring'+bl.id);if(rngU&&rngU.parentNode)rngU.parentNode.removeChild(rngU);
+        _rk.blocks.splice(i,1);continue;
+      }
       rkHitRocket(bl);if(!_rk.running)return;continue;
     }
     /* Off screen — block escaped */
