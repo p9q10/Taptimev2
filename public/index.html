@@ -1011,7 +1011,7 @@ function rkLaserHit(bl){
   if(bl.hp<=0){_rk.totalDestroyed++;
     if(bl.type==='power'){rkActivatePow(bl.powType);sfxWin()}
     else if(bl.type==='bomb'){rkBombExplode(bl)}
-    else{var pts=Math.ceil(bl.reward*rkComboMul());rkSpawnOrbs(bl.x+bl.w/2,bl.y+bl.h/2,pts);
+    else{var pts=Math.ceil(bl.reward*rkComboMul());_rk.pts+=pts;
       if(bl.type==='bonus')sfxGood();
       var pop=document.createElement('div');var tier=rkComboTier();
       var col=tier>=3?'#E060FF':tier>=2?'#FF8040':tier>=1?'#FFD860':'#80FFA0';
@@ -1039,17 +1039,7 @@ function rkBossHit(){
 }
 
 /* ══ ORBS ══ */
-function rkSpawnOrbs(cx,cy,total){
-  if(!_rk.area)return;var count=Math.min(5,Math.max(1,Math.ceil(total/3)));
-  var per=Math.floor(total/count);var rem=total-per*count;
-  for(var i=0;i<count;i++){var val=per+(i===0?rem:0);
-    var orb=document.createElement('div');var sz=val>=5?18:val>=2?14:10;
-    orb.style.cssText='position:absolute;top:'+cy+'px;left:'+(cx-sz/2+(Math.random()-.5)*30)+'px;width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFE880,#C8A020);box-shadow:0 0 '+(sz*.5)+'px rgba(255,216,96,.2);z-index:9;pointer-events:none;transition:opacity .3s';
-    if(val>=2)orb.innerHTML='<span style="font-family:var(--mono);font-size:'+(sz*.5)+'px;color:#8A6800;display:flex;align-items:center;justify-content:center;width:100%;height:100%">'+val+'</span>';
-    _rk.area.appendChild(orb);
-    _rk.orbs.push({el:orb,x:cx+(Math.random()-.5)*30,y:cy,val:val,speed:50+Math.random()*30});
-  }
-}
+
 
 /* ══ POWER-UP ══ */
 function rkActivatePow(pt){_rk.pow=pt.id;_rk.powTimer=pt.dur;
@@ -1067,7 +1057,7 @@ function rkBombExplode(bomb){var cx=bomb.x+bomb.w/2,cy=bomb.y+bomb.h/2,radius=10
   var totalR=0;for(var i=_rk.blocks.length-1;i>=0;i--){var bl=_rk.blocks[i];if(bl===bomb)continue;var bx=bl.x+bl.w/2,by=bl.y+bl.h/2;if(Math.sqrt((bx-cx)*(bx-cx)+(by-cy)*(by-cy))<radius){
     if(bl.type==='power'&&bl.powType){rkActivatePow(bl.powType)}else if(bl.type==='obs'){totalR+=rkReward(bl.maxHp)}else if(bl.type==='bonus'){totalR+=Math.ceil(bl.maxHp*3)}
     _rk.totalDestroyed++;rkExplode(bl);if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);_rk.blocks.splice(i,1)}}
-  if(totalR>0){rkSpawnOrbs(cx,cy,totalR)}rkUpdateHUD();}
+  if(totalR>0){_rk.pts+=totalR}rkUpdateHUD();}
 
 /* ══ HUD ══ */
 function rkUpdateHUD(){
@@ -1133,7 +1123,7 @@ function rkGameLoop(now){
   /* ── ULTRA ── */
   if(_rk.pow==='ultra'){for(var ui=_rk.blocks.length-1;ui>=0;ui--){var ub=_rk.blocks[ui];
     if(ub.x+ub.w>shipPX-30&&ub.x<shipPX+30){_rk.totalDestroyed++;
-      if(ub.type==='bomb')rkBombExplode(ub);else if(ub.type==='power'&&ub.powType)rkActivatePow(ub.powType);else{var uR=rkReward(ub.maxHp);rkSpawnOrbs(ub.x+ub.w/2,ub.y+ub.h/2,uR)}
+      if(ub.type==='bomb')rkBombExplode(ub);else if(ub.type==='power'&&ub.powType)rkActivatePow(ub.powType);else{_rk.pts+=rkReward(ub.maxHp)}
       rkExplode(ub);if(ub.el&&ub.el.parentNode)ub.el.parentNode.removeChild(ub.el);_rk.blocks.splice(ui,1)}}}
   /* ── PORTAL WALL ── */
   if(_rk.portalActive){var pw3=$('rkPortalWall');if(pw3){
@@ -1190,19 +1180,11 @@ function rkGameLoop(now){
     if(bl.el)bl.el.style.top=bl.y+'px';
     if(bl.y+bl.h>shipY&&bl.y<shipY+shipH&&bl.x+bl.w>shipPX-shipW/2&&bl.x<shipPX+shipW/2){
       if(_rk.pow==='shield'){if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);_rk.blocks.splice(i,1);sfx(300,.03,'sine',.05);continue}
-      if(_rk.pow==='ultra'){if(bl.type==='bomb')rkBombExplode(bl);else if(bl.type==='power'&&bl.powType)rkActivatePow(bl.powType);else{var uR2=rkReward(bl.maxHp);rkSpawnOrbs(bl.x+bl.w/2,bl.y+bl.h/2,uR2)}
+      if(_rk.pow==='ultra'){if(bl.type==='bomb')rkBombExplode(bl);else if(bl.type==='power'&&bl.powType)rkActivatePow(bl.powType);else{_rk.pts+=rkReward(bl.maxHp)}
         _rk.totalDestroyed++;rkExplode(bl);if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);_rk.blocks.splice(i,1);continue}
       rkHitRocket(bl);if(!_rk.running)return;continue}
     if(bl.y>_rk.areaH+10){if(bl.hp>0&&bl.type!=='power'){var dzMul=dzH>10?3:1;_rk.pts-=bl.hp*dzMul;_rk.combo=0;sfx(200,.04,'sawtooth',.08);vb(20);rkUpdateHUD();if(_rk.pts<=0){_rk.pts=0;rocketGameOver('energy');return}}
       if(bl.el&&bl.el.parentNode)bl.el.parentNode.removeChild(bl.el);_rk.blocks.splice(i,1)}}
-  /* ── MOVE ORBS ── */
-  for(var oi=_rk.orbs.length-1;oi>=0;oi--){var ob=_rk.orbs[oi];ob.y+=ob.speed*dt;
-    if(ob.el)ob.el.style.top=ob.y+'px';
-    /* Collect orb */
-    if(ob.y+10>shipY&&ob.y<shipY+shipH&&ob.x+10>shipPX-shipW/2&&ob.x-10<shipPX+shipW/2){
-      _rk.pts+=ob.val;sfx(600+ob.val*50,.02,'sine',.04);rkUpdateHUD();
-      if(ob.el&&ob.el.parentNode)ob.el.parentNode.removeChild(ob.el);_rk.orbs.splice(oi,1);continue}
-    if(ob.y>_rk.areaH+10){if(ob.el&&ob.el.parentNode)ob.el.parentNode.removeChild(ob.el);_rk.orbs.splice(oi,1)}}
   /* ── HUD ── */
   rkUpdateHUD();
   var altGain=rkSpeed()*dt*.15;
