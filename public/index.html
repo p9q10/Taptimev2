@@ -799,7 +799,7 @@ function renderGameOver(){submitted=false;sfxWin();vb([40,20,40,20,40,20,80]);st
 /* ══ ROCKET RISE v5 — CLOUDS + PORTAL WALL ══ */
 var _rk={running:false,level:1,score:0,pts:20,combo:0,maxCombo:0,altitude:0,
   blocks:[],shots:[],idC:0,frame:null,lastTick:0,spawnT:null,
-  rocketStage:1,portalSpawned:false,portalActive:false,portalHP:0,portalMaxHP:0,portalCountdown:false,
+  rocketStage:1,portalSpawned:false,portalActive:false,portalHP:0,portalMaxHP:0,portalCountdown:false,portalDrainTimer:0,
   highscore:0,bestLevel:0,
   rocketX:.5,targetX:.5,areaW:300,areaH:600,area:null,
   elapsed:0,levelTimer:0,totalDestroyed:0,
@@ -829,6 +829,10 @@ function rkSpeed(){return 80+_rk.level*12+Math.min(_rk.elapsed*.12,50)}
 function rkSpawnRate(){return Math.max(300,850-_rk.level*40-Math.min(_rk.elapsed*.3,150))}
 function rkBlockW(){return Math.max(52,82-_rk.level*2)}
 function rkReward(hp){return Math.ceil(hp*2.2)}
+/* ══ ROCKET UPGRADES PER LEVEL ══ */
+function rkFireRate(){return Math.max(.10,.18-_rk.level*.012)}
+function rkDamage(){return 1+Math.floor(_rk.level/4)}
+function rkDualShot(){return _rk.level>=5}
 function rkLoadHigh(){try{var d=JSON.parse(localStorage.getItem('t2t_rr5')||'{}');_rk.highscore=d.h||0;_rk.bestLevel=d.l||0}catch(e){}}
 function rkSaveHigh(){try{localStorage.setItem('t2t_rr5',JSON.stringify({h:_rk.highscore,l:_rk.bestLevel}))}catch(e){}}
 
@@ -913,7 +917,7 @@ function rocketPlay(){
   _rk.running=true;_rk.level=1;_rk.score=0;_rk.pts=20;_rk.altitude=0;
   _rk.combo=0;_rk.maxCombo=0;_rk.blocks=[];_rk.shots=[];_rk.idC=0;
   _rk.rocketStage=1;_rk.portalSpawned=false;_rk.portalActive=false;_rk.portalCountdown=false;
-  _rk.portalHP=0;_rk.portalMaxHP=0;
+  _rk.portalHP=0;_rk.portalMaxHP=0;_rk.portalDrainTimer=0;
   _rk.rocketX=.5;_rk.targetX=.5;
   _rk.pow=null;_rk.powTimer=0;_rk.powLastSpawn=0;_rk.ultraActive=false;
   _rk.elapsed=0;_rk.levelTimer=0;_rk.totalDestroyed=0;
@@ -938,8 +942,8 @@ function rocketPlay(){
   '<div id="rkShip" style="position:absolute;bottom:28%;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none">'+rkRocketSVG(1,48)+'</div>'+
   /* Portal wall (hidden initially) */
   '<div id="rkPortalWall" style="display:none;position:absolute;left:0;right:0;height:44px;z-index:6;background:linear-gradient(180deg,rgba(40,200,130,.2),rgba(30,180,110,.1));border-top:2.5px solid #40FFB0;border-bottom:2.5px solid #40FFB0"><div style="text-align:center;line-height:44px;font-family:var(--ft);font-size:13px;color:#80FFD0;letter-spacing:2px" id="rkPortalText">🌀 PORTAL 🌀</div></div>'+
-  /* Portal countdown overlay */
-  '<div id="rkPortalOverlay" style="display:none;position:absolute;inset:0;z-index:28;background:rgba(0,0,0,.35);pointer-events:none"><div style="position:absolute;top:28%;left:0;right:0;text-align:center"><div style="font-family:var(--ft);font-size:13px;color:rgba(255,255,255,.4);letter-spacing:3px;margin-bottom:4px">PORTAL DURCHGANG</div><div id="rkPortalCount" style="font-family:var(--mono);font-size:64px;color:#80FFD0;font-weight:700;line-height:1;text-shadow:0 0 24px rgba(80,255,200,.3)">0</div><div id="rkPortalDrain" style="font-family:var(--ft);font-size:12px;color:#FF6050;margin-top:6px;letter-spacing:2px">-1⚡</div><div style="margin-top:10px"><div style="display:inline-block;padding:6px 18px;border-radius:99px;background:rgba(0,0,0,.3);backdrop-filter:blur(6px)"><span id="rkPortalPts" style="font-family:var(--mono);font-size:14px;color:#FFD860">⚡ 0</span></div></div><div style="margin:10px auto;width:70%;height:8px;border-radius:4px;background:rgba(0,0,0,.2);overflow:hidden"><div id="rkPortalBar" style="width:0%;height:100%;border-radius:4px;background:linear-gradient(90deg,#40FFB0,#80FFD0);transition:width .08s"></div></div></div></div>'+
+  /* Portal countdown number (in-game, no overlay) */
+  '<div id="rkPortalCount" style="display:none;position:absolute;left:50%;transform:translateX(-50%);z-index:22;pointer-events:none;text-align:center"><div id="rkPortalNum" style="font-family:var(--mono);font-size:48px;color:#80FFD0;font-weight:700;text-shadow:0 0 20px rgba(80,255,200,.3)">0</div><div style="font-family:var(--ft);font-size:9px;color:#FF6050;letter-spacing:1px;margin-top:2px">-'+1+'⚡ PRO TICK</div></div>'+
   /* Timer ring */
   '<svg id="rkTimerRing" style="display:none;position:absolute;bottom:calc(28% - 20px);left:50%;transform:translateX(-50%);width:86px;height:110px;z-index:11;pointer-events:none" viewBox="0 0 86 110"><circle cx="43" cy="55" r="40" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="3"/><circle id="rkTimerArc" cx="43" cy="55" r="40" fill="none" stroke="#FFD860" stroke-width="3" stroke-dasharray="251" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 43 55)"/></svg>'+
   '<div id="rkPowCount" style="display:none;position:absolute;bottom:calc(28% + 70px);left:50%;transform:translateX(-50%);z-index:12;pointer-events:none;font-family:var(--ft);font-size:24px;color:#FFD860;text-shadow:0 0 12px rgba(255,216,96,.3)"></div>'+
@@ -976,13 +980,13 @@ function rkBuildEnv(){
 
 /* ══ SPAWN ══ */
 function rkSpawnLoop(){
-  if(!_rk.running||_rk.portalCountdown)return;
+  if(!_rk.running)return;
   rkSpawnBlock('obs');
-  if(Math.random()<.1)setTimeout(function(){if(_rk.running&&!_rk.portalCountdown)rkSpawnBlock('bonus')},300);
+  if(Math.random()<.1)setTimeout(function(){if(_rk.running)rkSpawnBlock('bonus')},300);
   if(!_rk.portalSpawned&&_rk.levelTimer>10+Math.random()*5){_rk.portalSpawned=true;rkSpawnPortal()}
-  if(Math.random()<.06+_rk.level*.008)setTimeout(function(){if(_rk.running&&!_rk.portalCountdown)rkSpawnBlock('bomb')},150);
+  if(Math.random()<.06+_rk.level*.008)setTimeout(function(){if(_rk.running)rkSpawnBlock('bomb')},150);
   if(_rk.level>=3&&Math.random()<.06+_rk.level*.01)
-    for(var i=0;i<1+Math.floor(_rk.level*.3);i++)setTimeout(function(){if(_rk.running&&!_rk.portalCountdown)rkSpawnBlock('obs')},i*180);
+    for(var i=0;i<1+Math.floor(_rk.level*.3);i++)setTimeout(function(){if(_rk.running)rkSpawnBlock('obs')},i*180);
   if(_rk.elapsed-_rk.powLastSpawn>15+Math.random()*10){_rk.powLastSpawn=_rk.elapsed;rkSpawnBlock('power')}
   _rk.spawnT=setTimeout(rkSpawnLoop,rkSpawnRate());
 }
@@ -1037,7 +1041,9 @@ function rkSpawnBlock(type){
 /* ══ LASER HIT ══ */
 function rkLaserHit(bl){
   if(_rk.pts<=0)return;
-  _rk.pts--;bl.hp--;
+  var dmg=rkDamage();
+  _rk.pts-=1;/* laser always costs 1 energy per shot */
+  bl.hp-=dmg;/* but DAMAGE scales with level */
   _rk.combo++;if(_rk.combo>_rk.maxCombo)_rk.maxCombo=_rk.combo;
   sfx(350+(bl.maxHp-bl.hp)*25,.03,'square',.05);
   if(bl.hp<=0){
@@ -1151,33 +1157,9 @@ function rkHitRocket(bl){
 
 /* ══ PORTAL COUNTDOWN ══ */
 function rkStartPortalCountdown(){
-  _rk.portalCountdown=true;clearTimeout(_rk.spawnT);
-  var ov=$('rkPortalOverlay');if(ov)ov.style.display='block';
-  var cnt=$('rkPortalCount');var drn=$('rkPortalDrain');var pts=$('rkPortalPts');var bar=$('rkPortalBar');
-  function tick(){
-    if(!_rk.running)return;
-    if(_rk.portalHP<=0){/* SUCCESS */
-      if(ov)ov.style.display='none';
-      _rk.portalCountdown=false;_rk.portalActive=false;
-      var pw2=$('rkPortalWall');if(pw2)pw2.style.display='none';
-      rkLevelUp();
-      _rk.spawnT=setTimeout(rkSpawnLoop,800);
-      return;
-    }
-    _rk.portalHP--;_rk.pts--;
-    if(cnt)cnt.textContent=_rk.portalHP;
-    if(drn)drn.textContent='-1⚡';
-    if(pts)pts.textContent='⚡ '+_rk.pts;
-    if(bar)bar.style.width=((_rk.portalMaxHP-_rk.portalHP)/_rk.portalMaxHP*100)+'%';
-    sfx(400+(_rk.portalMaxHP-_rk.portalHP)*15,.02,'sine',.04);
-    rkUpdateHUD();
-    if(_rk.pts<=0){_rk.pts=0;rkUpdateHUD();if(ov)ov.style.display='none';rocketGameOver('energy');return}
-    setTimeout(tick,80);
-  }
-  if(cnt)cnt.textContent=_rk.portalHP;
-  if(pts)pts.textContent='⚡ '+_rk.pts;
-  if(bar)bar.style.width='0%';
-  setTimeout(tick,300);
+  _rk.portalCountdown=true;_rk.portalDrainTimer=0;
+  var pc=$('rkPortalCount');if(pc)pc.style.display='block';
+  sfx(300,.06,'sine',.1);vb([20,10,20]);
 }
 
 /* ══ LEVEL UP ══ */
@@ -1201,7 +1183,6 @@ function rkLevelUp(){
 function rkGameLoop(now){
   if(!_rk.running)return;
   var dt=(now-_rk.lastTick)/1000;_rk.lastTick=now;if(dt>0.1)dt=0.1;
-  if(_rk.portalCountdown){_rk.frame=requestAnimationFrame(rkGameLoop);return}
   _rk.elapsed+=dt;_rk.levelTimer+=dt;
   var lerpSpeed=12;
   _rk.rocketX+=(_rk.targetX-_rk.rocketX)*Math.min(1,lerpSpeed*dt);
@@ -1250,27 +1231,49 @@ function rkGameLoop(now){
       }
     }
   }
-  /* ══ PORTAL WALL MOVEMENT ══ */
+  /* ══ PORTAL WALL ══ */
   if(_rk.portalActive){
     var pw3=$('rkPortalWall');
     if(pw3){
-      var portalY=parseFloat(pw3.style.top)||0;
-      portalY+=rkSpeed()*.4*dt;
-      pw3.style.top=portalY+'px';
-      /* Rocket touches portal wall → start countdown */
-      if(portalY+44>=shipY&&portalY<=shipY+shipH){
-        rkStartPortalCountdown();
-      }
-      /* Portal falls off screen → game over */
-      if(portalY>_rk.areaH+10){
-        _rk.portalActive=false;pw3.style.display='none';
-        rocketGameOver('portal');return;
+      if(!_rk.portalCountdown){
+        /* Portal still falling */
+        var portalY=parseFloat(pw3.style.top)||0;
+        portalY+=rkSpeed()*.4*dt;
+        pw3.style.top=portalY+'px';
+        if(portalY+44>=shipY&&portalY<=shipY+shipH){rkStartPortalCountdown()}
+        if(portalY>_rk.areaH+10){_rk.portalActive=false;pw3.style.display='none';rocketGameOver('portal');return}
+      }else{
+        /* COUNTDOWN IN GAME — portal locked at rocket, draining energy */
+        pw3.style.top=shipY+'px';/* lock portal at rocket position */
+        pw3.style.animation='screenShake .15s ease infinite';/* shake! */
+        _rk.portalDrainTimer-=dt;
+        if(_rk.portalDrainTimer<=0){
+          _rk.portalDrainTimer=0.08;/* drain every 80ms */
+          var dmg=rkDamage();/* rocket damage applies to portal too */
+          _rk.portalHP-=dmg;_rk.pts-=dmg;
+          sfx(400+(_rk.portalMaxHP-_rk.portalHP)*12,.015,'sine',.03);
+          rkUpdateHUD();
+          /* Update countdown display */
+          var pcn=$('rkPortalNum');if(pcn)pcn.textContent=Math.max(0,_rk.portalHP);
+          var pce=$('rkPortalCount');if(pce)pce.style.top=(shipY-60)+'px';
+          /* Update portal wall text */
+          var pt=$('rkPortalText');if(pt)pt.textContent='🌀 '+Math.max(0,_rk.portalHP)+'⚡ 🌀';
+          if(_rk.pts<=0){_rk.pts=0;rkUpdateHUD();rocketGameOver('energy');return}
+          if(_rk.portalHP<=0){
+            /* SUCCESS — breakthrough! */
+            _rk.portalCountdown=false;_rk.portalActive=false;
+            pw3.style.display='none';pw3.style.animation='';
+            var pch=$('rkPortalCount');if(pch)pch.style.display='none';
+            rkLevelUp();
+          }
+        }
       }
     }
   }
   /* ══ LASER ══ */
   _rk.laserTimer-=dt;
   var laserSVG=$('rkLaser');
+  var curRate=rkFireRate();
   if(_rk.pow==='laser'){
     var beamX=shipPX;
     var closest2=null,cDist2=99999;
@@ -1287,13 +1290,15 @@ function rkGameLoop(now){
         (closest2?'<circle cx="'+beamX+'" cy="'+beamEndY+'" r="8" fill="rgba(200,60,255,.25)"/>':'');
     }
     if(closest2&&_rk.laserTimer<=0&&_rk.pts>0){
-      _rk.laserTimer=_rk.laserRate/3;
+      _rk.laserTimer=curRate/3;
       rkLaserHit(closest2);if(!_rk.running)return;
     }
   }else if(_rk.pow!=='ultra'){
     if(_rk.laserTimer<=0&&_rk.pts>0){
-      _rk.laserTimer=_rk.laserRate;
+      _rk.laserTimer=curRate;
       _rk.shots.push({x:shipPX,y:shipY-10,speed:800});
+      /* Dual shot at level 5+ */
+      if(rkDualShot()){_rk.shots.push({x:shipPX+12,y:shipY-6,speed:800});_rk.shots.push({x:shipPX-12,y:shipY-6,speed:800})}
       sfx(500+Math.random()*100,.015,'square',.03);
     }
     var svgH='';
