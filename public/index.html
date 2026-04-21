@@ -834,13 +834,13 @@ function rkBonusHP(){return Math.max(1,Math.floor(1+_rk.level*.25+Math.random())
 function rkSpeed(){return(80+_rk.level*12+Math.min(_rk.elapsed*.12,50))*rkAdaptive().spd}
 function rkSpawnRate(){return Math.max(250,(850-_rk.level*40-Math.min(_rk.elapsed*.3,150))*rkAdaptive().spn)}
 function rkBlockW(){return Math.max(52,82-_rk.level*2)}
-function rkReward(hp){return Math.ceil(hp*2.2)}
+function rkReward(hp){return Math.ceil(hp*1.5)}
 /* ── ROCKET UPGRADES ── */
 function rkFireRate(){return Math.max(.10,.18-_rk.level*.012)}
 function rkDamage(){return 1+Math.floor(_rk.level/4)}
 function rkDualShot(){return _rk.level>=5}
 /* ── COMBO MULTIPLIER ── */
-function rkComboMul(){if(_rk.combo>=15)return 2.5;if(_rk.combo>=10)return 1.82;if(_rk.combo>=5)return 1.36;return 1}
+function rkComboMul(){if(_rk.combo>=15)return 1.8;if(_rk.combo>=10)return 1.5;if(_rk.combo>=5)return 1.2;return 1}
 function rkComboTier(){if(_rk.combo>=15)return 3;if(_rk.combo>=10)return 2;if(_rk.combo>=5)return 1;return 0}
 function rkLoadHigh(){try{var d=JSON.parse(localStorage.getItem('t2t_rr6')||'{}');_rk.highscore=d.h||0;_rk.bestLevel=d.l||0}catch(e){}}
 function rkSaveHigh(){try{localStorage.setItem('t2t_rr6',JSON.stringify({h:_rk.highscore,l:_rk.bestLevel}))}catch(e){}}
@@ -903,7 +903,7 @@ function rocketPlay(){
   '<div style="position:absolute;top:0;left:0;right:0;z-index:20;padding:44px 12px 0;pointer-events:none">'+
     '<div style="text-align:center;margin-bottom:5px"><div id="rkScore" style="font-family:var(--mono);font-size:36px;color:#fff;font-weight:700;line-height:1;text-shadow:0 3px 12px rgba(0,0,0,.25)">0m</div><div style="font-size:7px;color:rgba(255,255,255,.3);font-weight:800;letter-spacing:2px">HÖHE</div></div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center">'+
-      '<div id="rkPts" style="font-family:var(--mono);font-size:11px;color:#FFD860;padding:4px 10px;background:rgba(0,0,0,.25);border-radius:999px;backdrop-filter:blur(6px)">⚡ 20</div>'+
+      '<div id="rkPts" style="font-family:var(--mono);font-size:11px;color:#FFD860;padding:4px 10px;background:rgba(0,0,0,.25);border-radius:999px;backdrop-filter:blur(6px)">⚡ 20/50</div>'+
       '<div id="rkLvl" style="font-family:var(--ft);font-size:9px;color:rgba(255,255,255,.4);letter-spacing:1px">LVL 1</div>'+
       '<div id="rkComboHUD" style="font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.2);padding:4px 10px;background:rgba(0,0,0,.1);border-radius:999px">×0</div>'+
     '</div>'+
@@ -1061,7 +1061,8 @@ function rkBombExplode(bomb){var cx=bomb.x+bomb.w/2,cy=bomb.y+bomb.h/2,radius=10
 
 /* ══ HUD ══ */
 function rkUpdateHUD(){
-  var pe=$('rkPts');if(pe){pe.textContent='⚡ '+_rk.pts;pe.style.color=_rk.pts<5?'#FF6050':'#FFD860'}
+  if(_rk.pts>50)_rk.pts=50;
+  var pe=$('rkPts');if(pe){pe.textContent='⚡ '+_rk.pts+'/50';pe.style.color=_rk.pts<8?'#FF6050':_rk.pts<20?'#FFD860':'#80FFA0'}
   var le=$('rkLvl');if(le)le.textContent='LVL '+_rk.level;
   var sc=$('rkScore');if(sc)sc.textContent=_rk.score+'m';
   var ch=$('rkComboHUD');if(ch){var t=rkComboTier();
@@ -1191,7 +1192,8 @@ function rkGameLoop(now){
   var otBurnMul=_rk.overtime?(1+_rk.overtimeSecs*.3):1;
   _rk.altitude+=altGain;_rk.score=Math.floor(_rk.altitude);
   /* Höhe kostet Treibstoff */
-  _rk.burnAcc+=rkSpeed()*dt*.02*otBurnMul;
+  _rk.burnAcc+=rkSpeed()*dt*.04*otBurnMul;
+  if(_rk.pts>50)_rk.pts=50;/* ENERGY CAP */
   if(_rk.burnAcc>=1){var fuelDrain=Math.floor(_rk.burnAcc);_rk.burnAcc-=fuelDrain;_rk.pts-=fuelDrain;
     rkUpdateHUD();if(_rk.pts<=0){_rk.pts=0;rocketGameOver('energy');return}}
   var sc2=$('rkScore');if(sc2)sc2.textContent=_rk.score+'m';
