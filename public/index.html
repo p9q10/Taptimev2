@@ -1119,12 +1119,6 @@ function rkGameLoop(now){
       var arc=$('rkTimerArc');if(arc){arc.setAttribute('stroke',pw.color);arc.setAttribute('stroke-dashoffset',Math.round(251*(1-pct)))}
       var pc2=$('rkPowCount');if(pc2){pc2.style.display='block';pc2.textContent=Math.ceil(_rk.powTimer);pc2.style.color=pw.color;pc2.style.left=shipPX+'px'}}
       if(_rk.pow==='slow')slowMul=0.3;}}
-  /* ── ENERGY BURN ── */
-  var burnRate=0.5+_rk.level*0.4;
-  var otMul=_rk.overtime?(1+_rk.overtimeSecs*0.3):1;/* overtime accelerates burn */
-  _rk.burnAcc+=burnRate*otMul*dt;
-  if(_rk.burnAcc>=1){var drain=Math.floor(_rk.burnAcc);_rk.burnAcc-=drain;_rk.pts-=drain;
-    rkUpdateHUD();if(_rk.pts<=0){_rk.pts=0;rocketGameOver('energy');return}}
   /* ── OVERTIME CHECK ── */
   if(!_rk.overtime&&_rk.levelTimer>30&&!_rk.portalCountdown){
     _rk.overtime=true;_rk.overtimeSecs=0;
@@ -1211,7 +1205,13 @@ function rkGameLoop(now){
     if(ob.y>_rk.areaH+10){if(ob.el&&ob.el.parentNode)ob.el.parentNode.removeChild(ob.el);_rk.orbs.splice(oi,1)}}
   /* ── HUD ── */
   rkUpdateHUD();
-  _rk.altitude+=rkSpeed()*dt*.15;_rk.score=Math.floor(_rk.altitude);
+  var altGain=rkSpeed()*dt*.15;
+  var otBurnMul=_rk.overtime?(1+_rk.overtimeSecs*.3):1;
+  _rk.altitude+=altGain;_rk.score=Math.floor(_rk.altitude);
+  /* Höhe kostet Treibstoff */
+  _rk.burnAcc+=rkSpeed()*dt*.02*otBurnMul;
+  if(_rk.burnAcc>=1){var fuelDrain=Math.floor(_rk.burnAcc);_rk.burnAcc-=fuelDrain;_rk.pts-=fuelDrain;
+    rkUpdateHUD();if(_rk.pts<=0){_rk.pts=0;rocketGameOver('energy');return}}
   var sc2=$('rkScore');if(sc2)sc2.textContent=_rk.score+'m';
   _rk.frame=requestAnimationFrame(rkGameLoop);
 }
