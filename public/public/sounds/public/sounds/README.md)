@@ -1,0 +1,41 @@
+# DROP YOUR SAMPLES HERE
+
+## Expected file names (drop .mp3 or .wav into this folder):
+
+- `tap.mp3` → UI button press (very short, ~50ms wood-knock)
+- `good.mp3` → success/perfect (~400ms bright stab)
+- `bad.mp3` → fail (~500ms low womp)
+- `almost.mp3` → near-miss (~300ms neutral)
+- `go.mp3` → start signal (~400ms ascending)
+- `stop.mp3` → stop/end (~300ms descending)
+- `buzzer.mp3` → wrong/timeout (~500ms harsh)
+- `win.mp3` → match win fanfare (~800ms triumphant)
+- `elim.mp3` → elimination (~600ms dramatic)
+- `tick.mp3` → countdown tick (very short, ~30ms click)
+- `whoosh.mp3` → transition wipe (~400ms swoosh)
+- `confetti.mp3` → celebration burst (~600ms party)
+- `coin.mp3` → coin earned (~300ms metallic)
+- `streak.mp3` → streak achieved (~500ms power-up)
+- `chaos.mp3` → chaos moment trigger (~600ms explosive)
+- `crowd.mp3` → crowd reaction loop (~2s ambient cheering)
+
+## Format
+
+- **Format:** MP3 or WAV (MP3 recommended for size)
+- **Bitrate:** 128 kbps is plenty for SFX
+- **Mono** is fine — saves bandwidth
+- **Volume:** normalize to -6dB peak so the in-game mixer can balance them
+
+## Behavior
+
+- App **automatically detects** files in this folder on startup
+- If a sample is missing, the app falls back to the synthetic Web-Audio version
+- You can drop any subset — only `tap.mp3` alone already feels great
+- Files are loaded once on first user interaction (browser audio policy)
+
+## Tips for finding samples
+
+- **Free options:** freesound.org, pixabay.com/sound-effects, zapsplat.com
+- **AI generation:** ElevenLabs Sound Effects, Suno, Stable Audio
+- **Check license:** prefer CC0 / Royalty-Free for commercial use
+- **Test:** drop one sample, refresh page, hear difference vs synth fallback
