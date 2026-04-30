@@ -1867,8 +1867,22 @@ function unlockAchievement(id){
   if(a[id])return false;
   a[id]={t:Date.now()};
   saveAchievements(a);
-  showAchievementToast(id);
+  /* Highlight-Selector-Regel: Solo-Pings werden mid-game NICHT gezeigt.
+     Sie werden in einer Queue gesammelt und am GameOver-Screen geflusht. */
+  if(window._inActiveSession){
+    window._achievementQueue=window._achievementQueue||[];
+    window._achievementQueue.push(id);
+  }else{
+    showAchievementToast(id);
+  }
   return true;
+}
+function flushAchievementQueue(){
+  var q=window._achievementQueue||[];
+  window._achievementQueue=[];
+  q.forEach(function(id,idx){
+    setTimeout(function(){showAchievementToast(id)},idx*1400);
+  });
 }
 function getWinCount(){
   try{return parseInt(localStorage.getItem("t2t_wincount")||"0",10)}catch(e){return 0}
@@ -2125,6 +2139,126 @@ function setHardcoreWatermark(on){
   }else{
     if(w&&w.parentNode)w.parentNode.removeChild(w);
   }
+}
+
+/* ═════════════════════════════════════════════════════════════
+   HIGHLIGHT-SELECTOR — One-Highlight-Per-Round Logic
+   Strikte Prioritäts-Hierarchie:
+   1. Top-Play  2. Streak-Tier-Up  3. Chaos  4. Predictor (≥3×)  5. Normal-Win
+   Daten der unterdrückten Events bleiben im Backend, werden nur
+   visuell in diesem Moment NICHT gezeigt (Aggregation am GameOver).
+   ═════════════════════════════════════════════════════════════ */
+
+/* Top-Play-Schwellen pro Mode */
+function isTopPlayHL(mode,value,myRank){
+  if(myRank!==1)return false;
+  switch(mode){
+    case "bullseye":
+    case "countdown":  return Math.abs(value)<0.05;
+    case "reaction":   return value>0&&value<180;
+    case "tapfrenzy":  return value>=60;
+    case "memory":     return value>=9; /* 9+ richtig (Perfect-Recall) */
+    case "timesense":  return Math.abs(value)<0.1;
+  }
+  return false;
+}
+function getTopPlayHLTier(mode,value){
+  if(mode==="reaction"){
+    if(value<140)return "godlike";
+    if(value<160)return "elite";
+    return "fast";
+  }
+  if(mode==="bullseye"||mode==="countdown"){
+    if(Math.abs(value)<0.01)return "perfect";
+    if(Math.abs(value)<0.03)return "elite";
+    return "great";
+  }
+  return "great";
+}
+
+/* Streak-Tier-Up nur bei Übergang in neuen Tier */
+var STREAK_HL_TIERS=[3,5,8,12];
+function isStreakTierUpHL(before,after){
+  for(var i=0;i<STREAK_HL_TIERS.length;i++){
+    var t=STREAK_HL_TIERS[i];
+    if(before<t&&after>=t)return true;
+  }
+  return false;
+}
+function getStreakHLTierName(count){
+  if(count>=12)return "GODLIKE";
+  if(count>=8)return "RAMPAGE";
+  if(count>=5)return "ON FIRE";
+  if(count>=3)return "HOT STREAK";
+  return null;
+}
+
+/* Predictor-Schwelle: nur ≥3× Multiplier ist Highlight */
+var PREDICTOR_HL_MIN=3;
+
+/* HAUPTFUNKTION: Selektor */
+function selectHighlight(round){
+  /* round = {
+       mode, value, myRank,
+       streakBefore, streakAfter,
+       predictorHit, predictorMultiplier,
+       allResults, roundData, players,
+       isWin
+     } */
+
+  /* PRIORITY 1: TOP-PLAY */
+  if(isTopPlayHL(round.mode,round.value,round.myRank)){
+    return {
+      highlight_type:"top_play",
+      highlight_data:{
+        mode:round.mode,
+        value:round.value,
+        tier:getTopPlayHLTier(round.mode,round.value)
+      },
+      suppress_all_others:true
+    };
+  }
+
+  /* PRIORITY 2: STREAK-TIER-UP */
+  if(isStreakTierUpHL(round.streakBefore||0,round.streakAfter||0)){
+    return {
+      highlight_type:"streak_tier_up",
+      highlight_data:{
+        streak:round.streakAfter,
+        tier:getStreakHLTierName(round.streakAfter)
+      },
+      suppress_all_others:true
+    };
+  }
+
+  /* PRIORITY 3: CHAOS */
+  var chaos=detectChaosMoment(round.allResults,round.mode,round.roundData,round.players);
+  if(chaos){
+    return {
+      highlight_type:"chaos_moment",
+      highlight_data:chaos,
+      suppress_all_others:true
+    };
+  }
+
+  /* PRIORITY 4: PREDICTOR (nur ≥3×) */
+  if(round.predictorHit&&(round.predictorMultiplier||0)>=PREDICTOR_HL_MIN){
+    return {
+      highlight_type:"predictor_hit",
+      highlight_data:{
+        multiplier:round.predictorMultiplier,
+        bonusCoins:round.bonusCoins
+      },
+      suppress_all_others:true
+    };
+  }
+
+  /* PRIORITY 5: NORMAL-WIN (Fallback) */
+  return {
+    highlight_type:"normal_win",
+    highlight_data:{rank:round.myRank,value:round.value},
+    suppress_all_others:true
+  };
 }
 
 function detectChaosMoment(res,mode,rd,players){
@@ -2662,22 +2796,31 @@ so.on("sync",function(data){room=data;if(room.code)window._lastRoomCode=room.cod
     var meSync=room.players.find(function(p){return p.id===room.myId});
     if(meSync&&meSync.elo)eloSaveBackup(meSync.elo);
   }
-  /* Feature 1: show ELO animation when entering results phase with updates */
-  if(room.phase==="results"&&lastPhase!=="results"&&room.eloUpdates&&room.myId&&room.eloUpdates[room.myId]){
-    setTimeout(function(){showEloAnimation(room.eloUpdates[room.myId])},1800);
+  /* ELO-Animation: nur am Match-Ende (gameover-Phase), nicht mid-game.
+     Highlight-Selector-Regel: Solo-Pings werden gesammelt + am GameOver gezeigt. */
+  if(room.phase==="gameover"&&lastPhase!=="gameover"&&room.eloUpdates&&room.myId&&room.eloUpdates[room.myId]){
+    setTimeout(function(){showEloAnimation(room.eloUpdates[room.myId])},2200);
   }
-  /* Cinematic reveal on entering results */
+  /* Track active session for achievement queue */
+  if(room.phase==="lobby"||room.phase==="playing"||room.phase==="results"||room.phase==="elimination"){
+    window._inActiveSession=true;
+  }
+  if(room.phase==="gameover"&&lastPhase!=="gameover"){
+    window._inActiveSession=false;
+    /* Flush queued solo-pings 2.8s after gameover (after winner cinematic) */
+    setTimeout(flushAchievementQueue,2800);
+  }
+  /* Cinematic reveal NUR bei special highlight types — nicht bei jedem Result.
+     Highlight-Selector-Regel: Mid-game Cinematics nur wenn der Highlight es verdient. */
   if(room.phase==="results"&&lastPhase!=="results"&&lastPhase!==""){
-    var myRes=room.results&&room.results.find&&room.results.find(function(r){return r.pid===room.myId});
-    var cineWord="ERGEBNIS";
-    if(myRes){
-      if(myRes.rank===1)cineWord="WINNER";
-      else if(myRes.rank===2)cineWord="SECOND";
-      else if(myRes.rank===3)cineWord="THIRD";
-      else if(myRes.value>=9)cineWord="TAPPED";
-      else cineWord="ERGEBNIS";
+    /* Cinematic only triggers if Highlight-Selector chose top_play, streak_tier_up, or chaos_moment */
+    var hl=window._currentHighlight;
+    if(hl==="top_play"||hl==="streak_tier_up"||hl==="chaos_moment"){
+      var myRes=room.results&&room.results.find&&room.results.find(function(r){return r.pid===room.myId});
+      var cineWord=hl==="top_play"?"TOP PLAY":(hl==="streak_tier_up"?"STREAK":"CHAOS");
+      playCinematic(cineWord);
     }
-    playCinematic(cineWord);
+    /* normal_win and predictor_hit: NO cinematic — quick auto-advance */
   }
   /* Cinematic reveal on entering elimination */
   if(room.phase==="elimination"&&lastPhase!=="elimination"&&lastPhase!==""){
@@ -4825,9 +4968,40 @@ setTimeout(function(){
     if(room.hardcoreMode&&myRes.hardcoreBonus){
       hardcoreBanner='<div class="cd" style="margin-top:10px;padding:8px 12px;border:2px solid var(--pink);background:linear-gradient(135deg,rgba(255,59,127,.10),rgba(255,59,127,.04));animation:pop .5s ease 1.6s both"><div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;font-weight:800;color:var(--pink)"><span style="font-size:16px">🔥</span><span style="letter-spacing:2px">HARDCORE BONUS</span><span style="font-family:var(--mono);font-weight:700">+'+myRes.hardcoreBonus+' 🪙</span></div></div>';
     }
-    myBanner='<div class="cd" style="margin-top:12px;padding:14px;animation:countUp .5s 1.4s ease both;border:2px solid '+rankColor+'"><div class="ct"><div style="font-size:28px;animation:crownDrop .4s 1.8s ease both">'+rankEmoji+'</div><div style="font-family:var(--ft);font-size:24px;color:'+rankColor+';letter-spacing:3px;animation:nameReveal .6s 2s ease both">'+rankWord+'</div><div style="font-family:var(--mono);font-size:11px;color:var(--sub);margin-top:4px">'+myVal+'</div>'+rxBonusBanner+'<div style="display:flex;justify-content:center;gap:20px;margin-top:10px"><div><div style="font-size:7px;color:var(--sub);font-weight:800;letter-spacing:1px">GEWONNEN</div><div style="font-size:20px;font-weight:800;color:var(--gold);margin-top:2px">\uD83E\uDE99 <span id="myCoins">0</span></div></div><div><div style="font-size:7px;color:var(--sub);font-weight:800;letter-spacing:1px">TOTAL</div><div style="font-family:var(--mono);font-size:20px;color:var(--text);margin-top:2px"><span id="myTotal">0</span></div></div></div></div></div>'+predBanner+streakBanner+topPlayBanner+hardcoreBanner}
-  /* Chaos detection */
-  var chaos=detectChaosMoment(res,room.mode,rd,room.players);
+    myBanner='<div class="cd" style="margin-top:12px;padding:14px;animation:countUp .5s 1.4s ease both;border:2px solid '+rankColor+'"><div class="ct"><div style="font-size:28px;animation:crownDrop .4s 1.8s ease both">'+rankEmoji+'</div><div style="font-family:var(--ft);font-size:24px;color:'+rankColor+';letter-spacing:3px;animation:nameReveal .6s 2s ease both">'+rankWord+'</div><div style="font-family:var(--mono);font-size:11px;color:var(--sub);margin-top:4px">'+myVal+'</div>'+rxBonusBanner+'<div style="display:flex;justify-content:center;gap:20px;margin-top:10px"><div><div style="font-size:7px;color:var(--sub);font-weight:800;letter-spacing:1px">GEWONNEN</div><div style="font-size:20px;font-weight:800;color:var(--gold);margin-top:2px">\uD83E\uDE99 <span id="myCoins">0</span></div></div><div><div style="font-size:7px;color:var(--sub);font-weight:800;letter-spacing:1px">TOTAL</div><div style="font-family:var(--mono);font-size:20px;color:var(--text);margin-top:2px"><span id="myTotal">0</span></div></div></div></div></div>';
+    /* HIGHLIGHT-SELECTOR: pick ONE highlight, suppress all others */
+    var _hlChaos=detectChaosMoment(res,room.mode,rd,room.players);
+    var _hl=selectHighlight({
+      mode:room.mode,
+      value:typeof myRes.value==="number"?myRes.value:0,
+      myRank:myRank,
+      streakBefore:myRes.streakBefore||0,
+      streakAfter:myRes.streakAfter||0,
+      predictorHit:!!myRes.predictionCorrect,
+      predictorMultiplier:myRes.predictionMultiplier||0,
+      bonusCoins:myRes.bonusCoins||0,
+      allResults:res,
+      roundData:rd,
+      players:room.players,
+      isWin:myRank===1
+    });
+    /* Render only the chosen highlight type — all others are suppressed */
+    var _showPred=(_hl.highlight_type==="predictor_hit");
+    var _showStreak=(_hl.highlight_type==="streak_tier_up");
+    var _showTopPlay=(_hl.highlight_type==="top_play");
+    var _showChaos=(_hl.highlight_type==="chaos_moment");
+    var _showHC=(_hl.highlight_type==="normal_win"); /* HC-Bonus nur bei normal-win */
+    if(_showPred)myBanner+=predBanner;
+    if(_showStreak)myBanner+=streakBanner;
+    if(_showTopPlay)myBanner+=topPlayBanner;
+    if(_showHC&&room.hardcoreMode&&myRes.hardcoreBonus){
+      var hardcoreBanner='<div class="cd" style="margin-top:10px;padding:8px 12px;border:2px solid var(--pink);background:linear-gradient(135deg,rgba(255,59,127,.10),rgba(255,59,127,.04));animation:pop .5s ease 1.6s both"><div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;font-weight:800;color:var(--pink)"><span style="font-size:16px">🔥</span><span style="letter-spacing:2px">HARDCORE BONUS</span><span style="font-family:var(--mono);font-weight:700">+'+myRes.hardcoreBonus+' 🪙</span></div></div>';
+      myBanner+=hardcoreBanner;
+    }
+    /* Make highlight type available for chaos/rivalry suppression below */
+    window._currentHighlight=_hl.highlight_type;}
+  /* Chaos detection — only render if Highlight-Selector chose chaos */
+  var chaos=(window._currentHighlight==="chaos_moment")?detectChaosMoment(res,room.mode,rd,room.players):null;
   var chaosHtml=chaosBannerHTML(chaos);
   /* Rivalry: process my matchups vs others, find biggest */
   var myMatchupRivalry=null;
@@ -4845,7 +5019,7 @@ setTimeout(function(){
     if(bestRival)myMatchupRivalry=bestRival;
   }
   var rivalryHtml='';
-  if(myMatchupRivalry){
+  if(myMatchupRivalry&&window._currentHighlight==="normal_win"){
     var ms=myMatchupRivalry;
     var col=ms.status.label==="NEMESIS"?"var(--pink)":ms.status.label==="DOMAIN"?"var(--yellow)":"var(--cyan)";
     var emoji=ms.status.label==="NEMESIS"?"😈":ms.status.label==="DOMAIN"?"👑":"⚔️";
