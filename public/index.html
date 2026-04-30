@@ -65,6 +65,40 @@ html,body{height:100%;overflow-x:hidden}
 body{font-family:var(--f);background:linear-gradient(180deg,var(--bg) 0%,var(--bg-grad-end) 100%);color:var(--text);min-height:100dvh;position:relative}
 body::before{content:'';position:fixed;top:0;left:0;right:0;height:250px;pointer-events:none;z-index:0;
   background:linear-gradient(180deg,rgba(255,59,127,.06),transparent)}
+/* Body halftone overlay — subtle dot pattern across whole app */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background-image:
+    radial-gradient(circle,rgba(255,59,127,.05) 1.5px,transparent 2px),
+    radial-gradient(circle,rgba(0,229,255,.04) 1px,transparent 1.5px);
+  background-size:36px 36px,16px 16px;
+  background-position:0 0,8px 8px}
+/* FILM GRAIN OVERLAY — sits above everything, animated */
+#grain{position:fixed;inset:-50%;width:200%;height:200%;pointer-events:none;z-index:9990;
+  opacity:.06;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.85 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation:grainShift 1.2s steps(6) infinite}
+@keyframes grainShift{
+  0%{transform:translate(0,0)}
+  10%{transform:translate(-3%,-2%)}
+  25%{transform:translate(2%,3%)}
+  40%{transform:translate(-2%,1%)}
+  55%{transform:translate(3%,-1%)}
+  70%{transform:translate(-1%,-3%)}
+  85%{transform:translate(1%,2%)}
+  100%{transform:translate(0,0)}
+}
+
+/* GRAIN OVERLAY — film-grain texture for tactile feel */
+#grain{position:fixed;inset:-50%;pointer-events:none;z-index:9990;opacity:.06;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size:200px 200px;
+  animation:grainShift 1.2s steps(4) infinite}
+@keyframes grainShift{
+  0%,100%{transform:translate(0,0)}
+  25%{transform:translate(-3%,2%)}
+  50%{transform:translate(2%,-3%)}
+  75%{transform:translate(-2%,-2%)}
+}
 #app{max-width:440px;margin:0 auto;padding:16px 18px 50px;position:relative;z-index:1}
 button{font-family:var(--f);cursor:pointer;border:none;outline:none}
 input{font-family:var(--f);outline:none}
@@ -96,7 +130,12 @@ input{font-family:var(--f);outline:none}
 .inp::placeholder{color:var(--dim)}
 
 .cd{border-radius:24px;background:var(--surf);border:1.5px solid var(--border);padding:20px;
-  box-shadow:0 4px 0 rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05)}
+  box-shadow:0 4px 0 rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05);
+  position:relative;overflow:hidden}
+.cd::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.45;
+  background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1.5px);
+  background-size:18px 18px}
+.cd>*{position:relative;z-index:1}
 .ct{text-align:center}
 .lb{font-size:9px;color:var(--sub);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;font-weight:800}
 
@@ -107,6 +146,52 @@ input{font-family:var(--f);outline:none}
 
 .pchip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;
   border:1.5px solid var(--border);background:var(--surf-hi);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+
+/* SIGNATURE WORDMARK */
+.wm{display:inline-flex;align-items:baseline;justify-content:center;gap:0;font-family:var(--ft);font-weight:900;letter-spacing:2px;line-height:1;color:var(--text);position:relative}
+.wm-t{display:inline-block}
+.wm-2{display:inline-block;color:var(--yellow);position:relative;margin:0 .04em;text-shadow:0 0 12px rgba(255,230,0,.5)}
+.wm-2 .wm-2-inner{display:inline-block;animation:wmGlow 2s ease infinite}
+/* small stopwatch dot orbiting the 2 */
+.wm-2::before{content:'';position:absolute;top:.18em;left:50%;width:6px;height:6px;background:var(--pink);border-radius:50%;transform-origin:0 .42em;transform:translateX(-50%) translateY(-.42em);animation:wmStopwatch 3.5s linear infinite;box-shadow:0 0 8px rgba(255,59,127,.8)}
+.wm-glitch{animation:wmGlitch .6s steps(8,end) 1,wmSnapIn .5s ease both}
+.wm-snap{animation:wmSnapIn .5s ease both}
+
+/* PATTERNS — Halftone dots + stripes */
+.pat-dots-pink{
+  background-image:radial-gradient(circle,rgba(255,59,127,.18) 1.5px,transparent 2px);
+  background-size:14px 14px;background-position:0 0;
+}
+.pat-dots-yellow{
+  background-image:radial-gradient(circle,rgba(255,230,0,.18) 1.5px,transparent 2px);
+  background-size:14px 14px;background-position:0 0;
+}
+.pat-dots-cyan{
+  background-image:radial-gradient(circle,rgba(0,229,255,.18) 1.5px,transparent 2px);
+  background-size:14px 14px;background-position:0 0;
+}
+.pat-dots-fade{
+  background-image:radial-gradient(circle,rgba(255,255,255,.06) 1.5px,transparent 2px),radial-gradient(circle,rgba(255,59,127,.10) 1.5px,transparent 2px);
+  background-size:14px 14px,28px 28px;
+  background-position:0 0,7px 7px;
+}
+.pat-stripes-pink{
+  background-image:repeating-linear-gradient(45deg,rgba(255,59,127,.10) 0,rgba(255,59,127,.10) 6px,transparent 6px,transparent 14px);
+}
+.pat-stripes-yellow{
+  background-image:repeating-linear-gradient(45deg,rgba(255,230,0,.10) 0,rgba(255,230,0,.10) 6px,transparent 6px,transparent 14px);
+}
+.pat-stripes-cyan{
+  background-image:repeating-linear-gradient(-45deg,rgba(0,229,255,.10) 0,rgba(0,229,255,.10) 6px,transparent 6px,transparent 14px);
+}
+/* Body-level halftone gradient (large dots fading to small) */
+.pat-halftone-bg{
+  background-image:
+    radial-gradient(circle,rgba(255,59,127,.04) 2px,transparent 3px),
+    radial-gradient(circle,rgba(0,229,255,.03) 1px,transparent 2px);
+  background-size:42px 42px,18px 18px;
+  background-position:0 0,9px 9px;
+}
 
 .time-display{background:linear-gradient(180deg,#1A1A2A,#0A0A18);border-radius:16px;border:3px solid #3A3A5A;
   padding:12px 18px;margin:10px auto;max-width:280px;box-shadow:inset 0 4px 12px rgba(0,0,0,.4),0 4px 0 rgba(0,0,0,.12);
@@ -131,6 +216,26 @@ input{font-family:var(--f);outline:none}
 @keyframes breathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.01)}}
 @keyframes streakPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 currentColor}50%{transform:scale(1.04);box-shadow:0 0 12px 1px currentColor}}
 @keyframes streakBreak{0%{transform:translateY(0) scale(1);opacity:1}40%{transform:translateY(-4px) scale(1.05);opacity:1}100%{transform:translateY(20px) scale(.85);opacity:.3}}
+/* Wordmark: stoppuhr-rotation für die "2" */
+@keyframes wmStopwatch{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+/* Wordmark: subtle glow pulse */
+@keyframes wmGlow{0%,100%{filter:drop-shadow(0 0 8px rgba(255,230,0,.3))}50%{filter:drop-shadow(0 0 16px rgba(255,230,0,.6))}}
+/* Wordmark: RGB-glitch intro (3 frames) */
+@keyframes wmGlitch{
+  0%{transform:translate(0,0);text-shadow:0 0 0 transparent}
+  10%{transform:translate(-3px,2px);text-shadow:3px 0 0 #FF3B7F,-3px 0 0 #00E5FF}
+  20%{transform:translate(3px,-2px);text-shadow:-3px 0 0 #FF3B7F,3px 0 0 #00E5FF}
+  30%{transform:translate(-2px,1px);text-shadow:2px 0 0 #FFE600,-2px 0 0 #00E5FF}
+  40%{transform:translate(0,0);text-shadow:0 0 0 transparent}
+  100%{transform:translate(0,0);text-shadow:0 0 0 transparent}
+}
+/* Wordmark: snap-in scale */
+@keyframes wmSnapIn{
+  0%{opacity:0;transform:scale(.6)}
+  60%{opacity:1;transform:scale(1.08)}
+  80%{transform:scale(.96)}
+  100%{transform:scale(1)}
+}
 @keyframes sweepHand{from{transform:translateX(-50%) rotate(0deg)}to{transform:translateX(-50%) rotate(360deg)}}
 @keyframes lcdFlicker{0%,100%{opacity:1}50%{opacity:.95}}
 @keyframes buzzerPress{0%{transform:scale(1)}50%{transform:scale(.92)}100%{transform:scale(1)}}
@@ -152,18 +257,20 @@ input{font-family:var(--f);outline:none}
 #confettiBox{position:fixed;inset:0;pointer-events:none;z-index:9989;overflow:hidden}
 .confetti{position:absolute;width:8px;height:8px;border-radius:2px;animation:confettiFall 2.5s ease-out forwards}
 </style></head><body>
+<div id="grain"></div>
+<div id="grain"></div>
 
 <!-- ══ SPLASH ══ -->
-<div id="splash" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:splashFade 2.6s ease forwards">
-  <div style="width:100px;height:100px;margin-bottom:24px;border-radius:50%;background:linear-gradient(180deg,#FFD860,#FFB800);box-shadow:0 6px 0 #D49600,0 10px 28px rgba(255,184,0,.3),inset 0 3px 0 rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;animation:float 3s ease-in-out infinite">
+<div id="splash" class="pat-halftone-bg" style="position:fixed;inset:0;background:linear-gradient(180deg,var(--bg),var(--bg-grad-end));z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;animation:splashFade 2.6s ease forwards">
+  <div style="width:100px;height:100px;margin-bottom:24px;border-radius:50%;background:linear-gradient(180deg,var(--yellow-hi),var(--yellow));box-shadow:0 6px 0 var(--yellow-lo),0 10px 36px rgba(255,230,0,.45),inset 0 3px 0 rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;animation:float 3s ease-in-out infinite">
     <div style="font-size:48px">⏱</div>
   </div>
-  <div style="font-family:'Lilita One',cursive;font-size:36px;color:var(--text);letter-spacing:3px">TIME<span style="color:#FFB800;font-size:1.3em">2</span>TAP</div>
-  <div style="font-size:10px;color:#A09080;margin-top:5px;letter-spacing:5px;font-weight:700">PARTY GAME</div>
+  <div class="wm wm-glitch" style="font-size:38px;letter-spacing:2px"><span class="wm-t">TIME</span><span class="wm-2"><span class="wm-2-inner">2</span></span><span class="wm-t">TAP</span></div>
+  <div style="font-size:10px;color:var(--sub);margin-top:8px;letter-spacing:5px;font-weight:700">PARTY GAME</div>
   <div style="display:flex;gap:8px;margin-top:28px">
-    <div style="width:10px;height:10px;border-radius:50%;background:#FF5A6A;animation:breathe 1.2s ease infinite"></div>
-    <div style="width:10px;height:10px;border-radius:50%;background:#FFB800;animation:breathe 1.2s .2s ease infinite"></div>
-    <div style="width:10px;height:10px;border-radius:50%;background:#6ECF4A;animation:breathe 1.2s .4s ease infinite"></div>
+    <div style="width:10px;height:10px;border-radius:50%;background:var(--pink);animation:breathe 1.2s ease infinite;box-shadow:0 0 12px rgba(255,59,127,.6)"></div>
+    <div style="width:10px;height:10px;border-radius:50%;background:var(--yellow);animation:breathe 1.2s .2s ease infinite;box-shadow:0 0 12px rgba(255,230,0,.6)"></div>
+    <div style="width:10px;height:10px;border-radius:50%;background:var(--cyan);animation:breathe 1.2s .4s ease infinite;box-shadow:0 0 12px rgba(0,229,255,.6)"></div>
   </div>
 </div>
 
@@ -622,7 +729,19 @@ function render(){if(!room)return;switch(room.phase){case"lobby":renderLobby();b
 
 function watchSVG(sz,clr){var c=clr||'#FF6B6B';return'<svg viewBox="0 0 100 120" width="'+sz+'" height="'+(sz*1.2)+'" xmlns="http://www.w3.org/2000/svg"><rect x="40" y="2" width="20" height="14" rx="5" fill="'+c+'"/><circle cx="50" cy="70" r="44" stroke="'+c+'" stroke-width="2.5" fill="#fff"/><circle cx="50" cy="70" r="38" stroke="rgba(0,0,0,.06)" stroke-width=".8" fill="none"/><line x1="50" y1="30" x2="50" y2="36" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="104" x2="50" y2="110" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="14" y1="70" x2="20" y2="70" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="80" y1="70" x2="86" y2="70" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="70" x2="50" y2="42" stroke="'+c+'" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="70" x2="68" y2="58" stroke="rgba(0,0,0,.2)" stroke-width="1.5" stroke-linecap="round"/><circle cx="50" cy="70" r="3" fill="'+c+'"/></svg>'}
 
-function lcdPanel(text,sz){return'<div style="display:inline-block;padding:10px 24px;border-radius:18px;background:#FFF0E8;border:1px solid rgba(0,0,0,.06)"><div class="dsp" style="font-size:'+(sz||'48')+'px;font-weight:500;letter-spacing:2px">'+text+'</div></div>'}
+function lcdPanel(text,sz){return'<div style="display:inline-block;padding:10px 24px;border-radius:18px;background:#0A0820;border:1.5px solid rgba(0,229,255,.25);box-shadow:inset 0 4px 12px rgba(0,0,0,.6),0 0 16px rgba(0,229,255,.12)"><div class="dsp" style="font-size:'+(sz||'48')+'px;font-weight:500;letter-spacing:2px">'+text+'</div></div>'}
+
+/* SIGNATURE WORDMARK helper */
+function wordmarkHTML(size,opts){
+  opts=opts||{};
+  var sz=size||32;
+  var animClass=opts.glitch?'wm-glitch':opts.snap?'wm-snap':'';
+  return '<div class="wm '+animClass+'" style="font-size:'+sz+'px">'+
+    '<span class="wm-t">TIME</span>'+
+    '<span class="wm-2"><span class="wm-2-inner">2</span></span>'+
+    '<span class="wm-t">TAP</span>'+
+  '</div>';
+}
 
 /* ══ HOME ══ */
 function home(){so.emit("leave");room=null;window._lastRoomCode=null;fullClientReset();
@@ -638,7 +757,7 @@ var eloHomeBadge=cnt>0?
 $("app").innerHTML=
 '<div style="animation:up .6s ease;padding-top:20px">'+
 '<div class="ct" style="margin-bottom:24px">'+
-  '<div style="font-family:var(--ft);font-size:28px;color:var(--text);letter-spacing:2px">TIME<span style="color:var(--gold);font-size:1.3em">2</span>TAP</div>'+
+  wordmarkHTML(36,{snap:true})+
   '<div style="font-size:10px;color:var(--sub);letter-spacing:4px;margin-top:2px;font-weight:700">PARTY GAME</div>'+
 '</div>'+
 '<div class="ct" style="margin-bottom:20px">'+
@@ -1036,7 +1155,7 @@ html+='<div class="ct" style="margin-top:20px"><button class="btn2" onclick="hom
 $("app").innerHTML=html}
 
 /* ══ PRE-GAME ══ */
-function renderPreGame(){var ps=room.players.filter(function(p){return p.connected});var isHost=room.hostId===room.myId;$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:14px"><div style="font-family:var(--f);font-size:22px;font-weight:900;color:var(--gold);letter-spacing:4px;margin-bottom:4px">TIME<span style="color:#F43F5E;font-size:1.3em">2</span>TAP</div><div style="font-size:10px;color:var(--sub);margin-bottom:24px;font-weight:700;letter-spacing:2px">'+(room.format==="ffa"?"ALLE GEGEN ALLE":"TEAM VS TEAM")+'</div><div class="cd" style="margin-bottom:22px;text-align:left"><div style="font-size:12px;color:var(--sub);line-height:1.8;font-weight:600">Jede Runde wird ein zufälliges Spiel gedreht. Bullseye, Zeitgefühl, Memory, Reaktion oder Countdown — seid bereit für alles!</div></div><div class="cd" style="margin-bottom:24px"><div class="lb">Spieler</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:14px">'+ps.map(function(p){return'<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--border);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)">'+avHTML(p.avatar,40)+'</div><div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">'+p.name+'</div>'+(p.elo?eloBadgeHTML(p.elo):'')+'</div>'}).join('')+'</div></div>'+(isHost?'<button class="btn" onclick="so.emit(\'startFirstRound\')">Los geht\'s</button>':'<div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div>')+'</div>'}
+function renderPreGame(){var ps=room.players.filter(function(p){return p.connected});var isHost=room.hostId===room.myId;$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:14px">'+wordmarkHTML(28,{snap:true})+'<div style="font-size:10px;color:var(--sub);margin-bottom:24px;font-weight:700;letter-spacing:2px;margin-top:6px">'+(room.format==="ffa"?"ALLE GEGEN ALLE":"TEAM VS TEAM")+'</div><div class="cd" style="margin-bottom:22px;text-align:left"><div style="font-size:12px;color:var(--sub);line-height:1.8;font-weight:600">Jede Runde wird ein zufälliges Spiel gedreht. Bullseye, Zeitgefühl, Memory, Reaktion oder Countdown — seid bereit für alles!</div></div><div class="cd" style="margin-bottom:24px"><div class="lb">Spieler</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:14px">'+ps.map(function(p){return'<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--border);background:var(--surf-hi);box-shadow:0 2px 8px rgba(0,0,0,.3)">'+avHTML(p.avatar,40)+'</div><div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">'+p.name+'</div>'+(p.elo?eloBadgeHTML(p.elo):'')+'</div>'}).join('')+'</div></div>'+(isHost?'<button class="btn" onclick="so.emit(\'startFirstRound\')">Los geht\'s</button>':'<div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div>')+'</div>'}
 
 /* ══ SPIN WHEEL ══ */
 
