@@ -7,6 +7,99 @@ const CH="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function mkCode(){let c;do{c="";for(let i=0;i<4;i++)c+=CH[Math.floor(Math.random()*CH.length)]}while(rooms.has(c));return c}
 function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a}
 const GAME_MODES=["bullseye","timesense","memory","reaction","countdown","tapfrenzy"];
+
+/* ═══════════════════════════════════════════
+   ELO SYSTEM (Feature 1)
+   ═══════════════════════════════════════════ */
+const playerElo=new Map(); // pid (persistent) -> {bullseye, timesense, memory, reaction, countdown, tapfrenzy, _matches}
+const ELO_START=1000;
+const ELO_K=32;
+const ELO_K_NEW=64;       // first 5 matches per mode = double K
+const ELO_NEW_THRESHOLD=5;
+function ensurePlayerElo(pid){
+  if(!playerElo.has(pid)){
+    const e={_matches:{}};
+    GAME_MODES.forEach(m=>{e[m]=ELO_START;e._matches[m]=0});
+    playerElo.set(pid,e);
+  }
+  return playerElo.get(pid);
+}
+function getElo(pid,mode){return ensurePlayerElo(pid)[mode]||ELO_START}
+function getMatchCount(pid,mode){return ensurePlayerElo(pid)._matches[mode]||0}
+function eloTier(elo){
+  if(elo<800)return{name:"Bronze",icon:"🥉",color:"#A06030",min:0};
+  if(elo<1000)return{name:"Silber",icon:"🥈",color:"#8A8A8A",min:800};
+  if(elo<1200)return{name:"Gold",icon:"🥇",color:"#D4A040",min:1000};
+  if(elo<1400)return{name:"Platin",icon:"💎",color:"#5BA3C0",min:1200};
+  if(elo<1600)return{name:"Diamant",icon:"💠",color:"#7B68EE",min:1400};
+  if(elo<1800)return{name:"Master",icon:"👑",color:"#C040A0",min:1600};
+  return{name:"Grandmaster",icon:"⚡",color:"#FFB800",min:1800};
+}
+function expectedScore(eloA,eloB){return 1/(1+Math.pow(10,(eloB-eloA)/400))}
+/*
+  Pairwise ELO update for FFA:
+  Each player plays every other player. If their rank is lower (better), they "win" that pairwise match.
+  Final delta = average of all pairwise deltas.
+*/
+function calcEloUpdates(rankings,mode){
+  // rankings = [{pid, rank}, ...] (rank 1 = best)
+  if(rankings.length<2)return{};
+  const updates={};
+  rankings.forEach(p=>{
+    const myElo=getElo(p.pid,mode);
+    const myMatches=getMatchCount(p.pid,mode);
+    const k=myMatches<ELO_NEW_THRESHOLD?ELO_K_NEW:ELO_K;
+    let totalDelta=0;
+    let pairs=0;
+    rankings.forEach(o=>{
+      if(o.pid===p.pid)return;
+      const oppElo=getElo(o.pid,mode);
+      const expected=expectedScore(myElo,oppElo);
+      const actual=p.rank<o.rank?1:p.rank>o.rank?0:0.5;
+      totalDelta+=k*(actual-expected);
+      pairs++;
+    });
+    const delta=pairs>0?Math.round(totalDelta/pairs):0;
+    updates[p.pid]={oldElo:myElo,delta,newElo:Math.max(0,myElo+delta)};
+  });
+  return updates;
+}
+function applyEloUpdates(updates,mode){
+  Object.keys(updates).forEach(pid=>{
+    const e=ensurePlayerElo(pid);
+    e[mode]=updates[pid].newElo;
+    e._matches[mode]=(e._matches[mode]||0)+1;
+  });
+}
+/* Return ELO data for a player (used in sync) */
+function getPlayerEloData(pid){
+  const e=ensurePlayerElo(pid);
+  const data={};
+  GAME_MODES.forEach(m=>{
+    data[m]={elo:e[m],matches:e._matches[m]||0,tier:eloTier(e[m])};
+  });
+  // overall = average of modes that have been played at least once, else default
+  let sum=0,cnt=0;
+  GAME_MODES.forEach(m=>{if(e._matches[m]>0){sum+=e[m];cnt++}});
+  data.overall={elo:cnt>0?Math.round(sum/cnt):ELO_START,matches:cnt,tier:eloTier(cnt>0?Math.round(sum/cnt):ELO_START)};
+  return data;
+}
+/* Allow client to restore ELO from localStorage backup if server lost state */
+function restorePlayerEloFromBackup(pid,backup){
+  if(!backup||typeof backup!=="object")return;
+  const e=ensurePlayerElo(pid);
+  // only restore if our current values are defaults (server lost state)
+  let isDefault=true;
+  GAME_MODES.forEach(m=>{if(e._matches[m]>0)isDefault=false});
+  if(!isDefault)return; // server has fresher data, ignore backup
+  GAME_MODES.forEach(m=>{
+    if(backup[m]&&typeof backup[m].elo==="number"&&typeof backup[m].matches==="number"){
+      e[m]=Math.max(0,Math.min(3000,backup[m].elo)); // sanity-clamp
+      e._matches[m]=Math.max(0,Math.min(10000,backup[m].matches));
+    }
+  });
+}
+/* ═══════════════════════════════════════════ */
 function pickMode(room){
   var pool=room.selectedModes&&room.selectedModes.length>0?room.selectedModes:GAME_MODES;
   var h=room.modeHistory||[];
@@ -58,11 +151,17 @@ function roomState(room){
   return{code:room.code,phase:room.phase,mode:room.mode,format:room.format,
     roundsPerPhase:room.roundsPerPhase,currentRound:room.currentRound,
     currentPhaseRound:room.currentPhaseRound,roundData:room.roundData,
-    players:room.players.map(p=>({id:p.id,name:p.name,avatar:p.avatar,team:p.team,connected:p.connected,eliminated:p.eliminated})),
+    players:room.players.map(p=>({
+      id:p.id,name:p.name,avatar:p.avatar,team:p.team,connected:p.connected,eliminated:p.eliminated,
+      /* ELO data per player (Feature 1) */
+      elo:p.pid?getPlayerEloData(p.pid):null
+    })),
     results:room.results,finalScores:room.finalScores,teamScores:room.teamScores||null,
     scores:room.scores,phaseScores:room.phaseScores,
     hostId:room.hostId,subs:subMap,teamSubs:tSubMap,
-    wheelEnabled:room.wheelEnabled!==false,selectedModes:room.selectedModes||GAME_MODES};
+    wheelEnabled:room.wheelEnabled!==false,selectedModes:room.selectedModes||GAME_MODES,
+    /* ELO updates from last round (Feature 1) */
+    eloUpdates:room.eloUpdates||null};
 }
 function bc(room){const s=roomState(room);room.players.forEach(p=>{io.to(p.id).emit("sync",{...s,myId:p.id})})}
 function findRoom(sid){for(const[c,r]of rooms){const p=r.players.find(x=>x.id===sid);if(p)return{code:c,room:r,player:p}}return null}
@@ -107,6 +206,7 @@ function spinForRound(room){
   room.mode=pickMode(room);
   room.roundData=genRoundData(room.mode,room.format);
   room.subs={};room.teamSubs={};room.results=null;room.teamScores=null;room.playerStates={};
+  room.eloUpdates=null; /* Feature 1: clear previous ELO updates */
   room.phase="spin";bc(room);
 }
 
@@ -132,23 +232,29 @@ function checkElimination(room){
 io.on("connection",sk=>{
   sk.on("leave",()=>{leaveCurrentRoom(sk)});
 
-  sk.on("create",({name,avatar,format,roundsPerPhase},cb)=>{
+  sk.on("create",({name,avatar,format,roundsPerPhase,pid,eloBackup},cb)=>{
     if(!name)return cb({ok:false,err:"Name fehlt"});
+    if(!pid)return cb({ok:false,err:"PID fehlt"});
     leaveCurrentRoom(sk);
+    if(eloBackup)restorePlayerEloFromBackup(pid,eloBackup);
     const code=mkCode();
     const room=makeRoom(code,sk,name,avatar,format,roundsPerPhase);
+    /* Attach persistent pid to the player */
+    room.players[0].pid=pid;
     room.scores[sk.id]=0;room.phaseScores[sk.id]=0;
     rooms.set(code,room);sk.join(code);cb({ok:true,code});bc(room);
   });
 
-  sk.on("join",({code,name,avatar},cb)=>{
+  sk.on("join",({code,name,avatar,pid,eloBackup},cb)=>{
     leaveCurrentRoom(sk);
     const room=rooms.get(code&&code.toUpperCase());
     if(!room)return cb({ok:false,err:"Raum nicht gefunden"});
     if(room.phase!=="lobby")return cb({ok:false,err:"Spiel läuft"});
     if(room.players.length>=8)return cb({ok:false,err:"Voll"});
     if(room.players.find(p=>p.name===name))return cb({ok:false,err:"Name vergeben"});
-    room.players.push({id:sk.id,name,avatar,team:null,connected:true,eliminated:false});
+    if(!pid)return cb({ok:false,err:"PID fehlt"});
+    if(eloBackup)restorePlayerEloFromBackup(pid,eloBackup);
+    room.players.push({id:sk.id,name,avatar,team:null,connected:true,eliminated:false,pid});
     room.scores[sk.id]=0;room.phaseScores[sk.id]=0;
     sk.join(code.toUpperCase());cb({ok:true,code:code.toUpperCase()});bc(room);
   });
@@ -207,6 +313,35 @@ io.on("connection",sk=>{
         const avgA=teamA.length?teamA.reduce((s,r)=>s+(room.scores[r.pid]||0),0)/teamA.length:0;
         const avgB=teamB.length?teamB.reduce((s,r)=>s+(room.scores[r.pid]||0),0)/teamB.length:0;
         room.teamScores={a:avgA,b:avgB};
+      }
+      /* ═══ FEATURE 1: ELO UPDATE ═══
+         Only for FFA matches with at least 2 players, and only if mode is in GAME_MODES.
+         Uses persistent pid (not socket id) for tracking. */
+      if(room.format==="ffa"&&sorted.length>=2&&GAME_MODES.indexOf(room.mode)!==-1){
+        const eloRankings=sorted.map(r=>{
+          const pl=room.players.find(x=>x.id===r.pid);
+          return pl&&pl.pid?{pid:pl.pid,rank:r.rank,sockId:r.pid}:null;
+        }).filter(x=>x);
+        if(eloRankings.length>=2){
+          const updates=calcEloUpdates(eloRankings,room.mode);
+          applyEloUpdates(updates,room.mode);
+          /* Attach ELO updates to room state, keyed by socket-id for client mapping */
+          const eloByPid={};
+          eloRankings.forEach(er=>{
+            const u=updates[er.pid];
+            if(u){
+              eloByPid[er.sockId]={
+                mode:room.mode,
+                oldElo:u.oldElo,
+                newElo:u.newElo,
+                delta:u.delta,
+                tierBefore:eloTier(u.oldElo),
+                tierAfter:eloTier(u.newElo)
+              };
+            }
+          });
+          room.eloUpdates=eloByPid;
+        }
       }
       room.results=sorted;room.phase="results";bc(room);
     }
@@ -328,6 +463,7 @@ io.on("connection",sk=>{
     if(room.phaseScores[oldId]!==undefined){room.phaseScores[sk.id]=room.phaseScores[oldId];delete room.phaseScores[oldId]}
     if(room.subs[oldId]){room.subs[sk.id]=room.subs[oldId];room.subs[sk.id].pid=sk.id;delete room.subs[oldId]}
     if(room.teamSubs[oldId]){room.teamSubs[sk.id]=room.teamSubs[oldId];room.teamSubs[sk.id].pid=sk.id;delete room.teamSubs[oldId]}
+    if(room.eloUpdates&&room.eloUpdates[oldId]){room.eloUpdates[sk.id]=room.eloUpdates[oldId];delete room.eloUpdates[oldId]}
     if(room.hostId===oldId)room.hostId=sk.id;
     // Update results if they reference old ID
     if(room.results){room.results.forEach(r=>{if(r.pid===oldId)r.pid=sk.id})}
