@@ -1,38 +1,30 @@
-# Time2Tap — Party Game
+# DROP YOUR SAMPLES HERE
 
-Multiplayer party game + solo Time Rush mode.
+## Expected file names (drop .mp3 or .wav into this folder):
 
-## Setup
+- tap.mp3          → UI button press (very short, ~50ms wood-knock)
+- good.mp3         → success/perfect (~400ms bright stab)
+- bad.mp3          → fail (~500ms low womp)
+- almost.mp3       → near-miss (~300ms neutral)
+- go.mp3           → start signal (~400ms ascending)
+- buzzer.mp3       → big buzzer press (~200ms deep thump)
+- stop.mp3         → timer stop (~300ms percussive)
+- win.mp3          → victory fanfare (~1.5s)
+- elim.mp3         → elimination (~1s descending)
+- whoosh.mp3       → screen transition (~300ms swoosh)
+- riser.mp3        → tension build (~1s)
+- drumroll.mp3     → drum roll (~800ms)
+- brass-stab.mp3   → impact accent (~250ms)
+- crowd-cheer.mp3  → win crowd (~1s)
+- crowd-aww.mp3    → lose crowd (~1s)
+- crowd-ooh.mp3    → suspense crowd (~800ms)
 
-```bash
-npm install
-npm start
-```
+## Where to find free samples:
+- freesound.org (search "wood knock", "brass stab", "crowd cheer")
+- pixabay.com/sound-effects
+- opengameart.org
 
-Server runs on port `3000` (or `PORT` env variable).
-
-## Deployment (Railway / Render / Heroku)
-
-1. Push to GitHub
-2. Connect to Railway/Render
-3. Set start command: `npm start`
-4. Deploy
-
-## Game Modes
-
-### Party Mode (Multiplayer)
-- **🎯 Bullseye** — Count to the target time in your head
-- **🧠 Zeitgefühl** — How long was the green phase?
-- **💾 Memory** — Remember the flashing number
-- **⚡ Reaktion** — Hit the green buzzer fastest
-- **⏱ Countdown** — Stop the timer at the right moment
-- **🔥 Tap Frenzy** — Tap as fast as possible
-
-### Time Rush (Solo)
-Collect green portals (+seconds), dodge red portals, survive level gates, beat your highscore.
-
-## Tech Stack
-- Node.js + Express + Socket.io
-- Single-page HTML/CSS/JS (no framework)
-- Web Audio API for sounds
-- Vibration API for haptics
+## Format:
+- mp3 preferred (smaller, universal)
+- 44.1kHz / 128-192kbps mono is fine
+- Keep them short — long files = slow load
