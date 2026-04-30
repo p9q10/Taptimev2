@@ -205,6 +205,103 @@ document.addEventListener("touchstart",function(e){if(e.target.tagName==="BUTTON
 var so=io(location.origin,{reconnection:true,reconnectionAttempts:30});
 var myId=null,room=null,myName="",myAvatar={sk:'k2',hr:'r1',hc:'c2',fc:'f1',gl:'g0',hd:'h0',jw:'j0'},selFormat="ffa";
 var myCoins=350;
+
+/* ═══════════════════════════════════════════
+   FEATURE 1: ELO CLIENT STATE
+   ═══════════════════════════════════════════ */
+var ELO_GAME_MODES=["bullseye","timesense","memory","reaction","countdown","tapfrenzy"];
+var ELO_MODE_NAMES={bullseye:"Bullseye",timesense:"Zeitgefühl",memory:"Memory",reaction:"Reaktion",countdown:"Countdown",tapfrenzy:"Tap Frenzy"};
+function eloGetPid(){
+  var p=null;
+  try{p=localStorage.getItem('t2t_pid')}catch(e){}
+  if(!p){
+    p='p_'+Math.random().toString(36).substr(2,9)+'_'+Date.now().toString(36);
+    try{localStorage.setItem('t2t_pid',p)}catch(e){}
+  }
+  return p;
+}
+var myPid=eloGetPid();
+function eloGetBackup(){
+  try{var d=localStorage.getItem('t2t_elo');if(d)return JSON.parse(d)}catch(e){}
+  return null;
+}
+function eloSaveBackup(eloData){
+  if(!eloData)return;
+  try{
+    var clean={};
+    ELO_GAME_MODES.forEach(function(m){
+      if(eloData[m])clean[m]={elo:eloData[m].elo,matches:eloData[m].matches};
+    });
+    localStorage.setItem('t2t_elo',JSON.stringify(clean));
+  }catch(e){}
+}
+function eloTier(elo){
+  if(elo<800)return{name:"Bronze",icon:"🥉",color:"#A06030"};
+  if(elo<1000)return{name:"Silber",icon:"🥈",color:"#8A8A8A"};
+  if(elo<1200)return{name:"Gold",icon:"🥇",color:"#D4A040"};
+  if(elo<1400)return{name:"Platin",icon:"💎",color:"#5BA3C0"};
+  if(elo<1600)return{name:"Diamant",icon:"💠",color:"#7B68EE"};
+  if(elo<1800)return{name:"Master",icon:"👑",color:"#C040A0"};
+  return{name:"Grandmaster",icon:"⚡",color:"#FFB800"};
+}
+/* small ELO badge HTML for under-avatar in lobby/pregame */
+function eloBadgeHTML(playerEloData,mode){
+  if(!playerEloData)return'';
+  var d=mode&&playerEloData[mode]?playerEloData[mode]:playerEloData.overall;
+  if(!d)return'';
+  var tier=d.tier||eloTier(d.elo);
+  return'<div style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;color:'+tier.color+';background:'+tier.color+'15;padding:2px 6px;border-radius:8px;margin-top:2px;letter-spacing:.5px;font-family:var(--mono)"><span style="font-size:10px">'+tier.icon+'</span>'+d.elo+'</div>';
+}
+/* Animation overlay for ELO update after a match */
+var _eloAnimShown=false;
+function showEloAnimation(update){
+  if(!update||_eloAnimShown)return;
+  _eloAnimShown=true;
+  var modeName=ELO_MODE_NAMES[update.mode]||update.mode;
+  var deltaSign=update.delta>=0?'+':'';
+  var deltaColor=update.delta>=0?'#34D399':'#F43F5E';
+  var promoted=update.tierAfter&&update.tierBefore&&update.tierAfter.name!==update.tierBefore.name;
+  var promotedUp=promoted&&update.newElo>update.oldElo;
+  var html='<div id="eloAnimWrap" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(20,15,28,.78);backdrop-filter:blur(10px);animation:fadeIn .25s ease" onclick="closeEloAnim()">'+
+    '<div style="background:#fff;border:3px solid '+update.tierAfter.color+';border-radius:28px;padding:32px 28px;max-width:320px;width:88%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.3);animation:pop .4s ease">'+
+      '<div style="font-size:10px;color:var(--sub);letter-spacing:3px;font-weight:800;margin-bottom:6px">'+modeName.toUpperCase()+' · ELO</div>'+
+      (promoted?'<div style="font-family:var(--f);font-size:22px;color:'+update.tierAfter.color+';margin-bottom:14px;font-weight:900;letter-spacing:1px">'+(promotedUp?'AUFSTIEG!':'ABSTIEG')+'</div>':'')+
+      '<div style="font-size:64px;line-height:1;margin:8px 0">'+update.tierAfter.icon+'</div>'+
+      '<div style="font-family:var(--f);font-size:16px;font-weight:800;color:'+update.tierAfter.color+';letter-spacing:2px;margin-bottom:14px">'+update.tierAfter.name+'</div>'+
+      '<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:14px 0">'+
+        '<div style="font-family:var(--mono);font-size:24px;color:var(--sub);font-weight:600">'+update.oldElo+'</div>'+
+        '<div style="font-size:18px;color:'+deltaColor+';font-weight:900">→</div>'+
+        '<div id="eloNumNew" style="font-family:var(--mono);font-size:32px;color:var(--text);font-weight:700">'+update.oldElo+'</div>'+
+      '</div>'+
+      '<div style="font-family:var(--mono);font-size:18px;color:'+deltaColor+';font-weight:800;margin-top:6px">'+deltaSign+update.delta+' ELO</div>'+
+      '<div style="font-size:10px;color:var(--sub);margin-top:18px;letter-spacing:1px;font-weight:600">tippe um zu schließen</div>'+
+    '</div>'+
+  '</div>';
+  var d=document.createElement('div');d.innerHTML=html;document.body.appendChild(d.firstChild);
+  /* animate the number */
+  var startEl=update.oldElo,endEl=update.newElo,dur=900,t0=performance.now();
+  function animateElo(){
+    var el=document.getElementById('eloNumNew');if(!el)return;
+    var p=Math.min(1,(performance.now()-t0)/dur);
+    var ease=1-Math.pow(1-p,3);
+    var cur=Math.round(startEl+(endEl-startEl)*ease);
+    el.textContent=cur;
+    if(p<1)requestAnimationFrame(animateElo);
+  }
+  requestAnimationFrame(animateElo);
+  if(promotedUp){
+    sfx(523,.1,'sine',.18);setTimeout(function(){sfx(659,.1,'sine',.18)},80);setTimeout(function(){sfx(784,.18,'sine',.2)},160);setTimeout(function(){sfx(1047,.25,'sine',.22)},240);
+    vb([40,30,40,30,80]);
+  }else if(update.delta>=0){
+    sfx(660,.06,'sine',.18);sfx(990,.08,'sine',.14);
+    vb([20,15,20]);
+  }else{
+    sfx(220,.18,'sine',.16);
+    vb([60,30]);
+  }
+}
+function closeEloAnim(){var w=document.getElementById('eloAnimWrap');if(w)w.remove();_eloAnimShown=false}
+/* ═══════════════════════════════════════════ */
 var avOwn={sk:['k1','k2','k3','k4','k5'],hr:['r1','r2','r3'],hc:['c1','c2','c3'],fc:['f1','f2'],gl:['g0','g1'],hd:['h0'],jw:['j0']};
 var avTab='sk';
 var AVSK=[{id:'k1',c:'#FCE4C8'},{id:'k2',c:'#DEB080'},{id:'k3',c:'#C08050'},{id:'k4',c:'#8B5E3C'},{id:'k5',c:'#5C3A1E'},{id:'k6',c:'#F0C0B8',p:50},{id:'k7',c:'#B8A060',p:50},{id:'k8',c:'#D0A040',p:80}];
@@ -324,7 +421,18 @@ document.addEventListener("touchstart",function(){
 so.on("reconnect",function(){if(window._lastRoomCode&&myName){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r){if(r&&r.ok){lastPhase="";so.emit("requestSync")}else{
   setTimeout(function(){if(window._lastRoomCode&&myName&&so.connected){so.emit("rejoin",{code:window._lastRoomCode,name:myName},function(r2){if(r2&&r2.ok){lastPhase="";so.emit("requestSync")}else{window._lastRoomCode=null}})}},2000)
 }})}});
-so.on("sync",function(data){room=data;if(room.code)window._lastRoomCode=room.code;if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound}if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}if(room.phase==="playing"&&lastPhase==="playing"&&!submitted)return;if(room.phase===lastPhase&&(room.phase==="results"||room.phase==="gameover"||room.phase==="pregame"||room.phase==="elimination"))return;if(room.phase==="spin"&&lastPhase==="spin"){return}lastPhase=room.phase;render()});
+so.on("sync",function(data){room=data;if(room.code)window._lastRoomCode=room.code;
+  /* Feature 1: backup my ELO state to localStorage every sync */
+  if(room.players&&room.myId){
+    var meSync=room.players.find(function(p){return p.id===room.myId});
+    if(meSync&&meSync.elo)eloSaveBackup(meSync.elo);
+  }
+  /* Feature 1: show ELO animation when entering results phase with updates */
+  if(room.phase==="results"&&lastPhase!=="results"&&room.eloUpdates&&room.myId&&room.eloUpdates[room.myId]){
+    setTimeout(function(){showEloAnimation(room.eloUpdates[room.myId])},1800);
+  }
+  if(room.phase==="playing"&&room.currentRound!==lastRound){submitted=false;lastRound=room.currentRound;_eloAnimShown=false}
+  if(room.phase==="playing"&&submitted){renderWaiting();lastPhase=room.phase;return}if(room.phase==="playing"&&lastPhase==="playing"&&!submitted)return;if(room.phase===lastPhase&&(room.phase==="results"||room.phase==="gameover"||room.phase==="pregame"||room.phase==="elimination"))return;if(room.phase==="spin"&&lastPhase==="spin"){return}lastPhase=room.phase;render()});
 so.on("zeitStop",function(d){if(submitted||!room||room.phase!=="playing"||room.mode!=="timesense")return;if(room.currentRound!==lastRound)return;window._zeitActual=d.actual;clearTimeout(window._tsWait);clearTimeout(window._tsMax);sfxStop();vb([80,30,80]);renderZeitInput()});
 so.on("spectatorUpdate",function(data){if(!room||!room.players)return;var me=room.players.find(function(p){return p.id===room.myId});if(!me||!me.eliminated)return;if(data.pid!==_spectating)return;if(data.periodic){var m=$("specMirror");if(!m)return;var cd=m.querySelector("#cdDisp");if(cd&&data.displayValue!==undefined){var spd=(data.progress||0)<.3?"var(--text)":(data.progress||0)<.7?"#F472B6":"#F43F5E";cd.innerHTML='<span style="color:'+spd+'">'+data.displayValue+'</span><span style="font-size:16px;color:var(--sub)">s</span>'}return}window._specState=data;renderSpectatorView()});
 function render(){if(!room)return;switch(room.phase){case"lobby":renderLobby();break;case"pregame":renderPreGame();break;case"spin":renderSpin();break;case"playing":renderPlaying();break;case"results":renderResults();break;case"elimination":renderElimination();break;case"gameover":renderGameOver();break}}
@@ -335,6 +443,15 @@ function lcdPanel(text,sz){return'<div style="display:inline-block;padding:10px 
 
 /* ══ HOME ══ */
 function home(){so.emit("leave");room=null;window._lastRoomCode=null;fullClientReset();
+/* Feature 1: compute overall ELO from local backup */
+var eloBak=eloGetBackup()||{};
+var sum=0,cnt=0;
+ELO_GAME_MODES.forEach(function(m){if(eloBak[m]&&eloBak[m].matches>0){sum+=eloBak[m].elo;cnt++}});
+var overallElo=cnt>0?Math.round(sum/cnt):1000;
+var t=eloTier(overallElo);
+var eloHomeBadge=cnt>0?
+  '<div onclick="showEloProfile()" style="display:inline-flex;align-items:center;gap:6px;background:'+t.color+'15;border:2px solid '+t.color+';padding:6px 12px;border-radius:14px;margin-top:10px;cursor:pointer"><span style="font-size:16px">'+t.icon+'</span><span style="font-family:var(--mono);font-size:13px;font-weight:700;color:'+t.color+'">'+overallElo+' ELO</span><span style="font-size:9px;color:'+t.color+';opacity:.7;letter-spacing:1px;font-weight:700">'+t.name.toUpperCase()+'</span></div>'
+  :'<div style="font-size:9px;color:var(--sub);margin-top:8px;font-weight:600;letter-spacing:1px">spiele dein erstes Match um ein ELO zu bekommen</div>';
 $("app").innerHTML=
 '<div style="animation:up .6s ease;padding-top:20px">'+
 '<div class="ct" style="margin-bottom:24px">'+
@@ -345,6 +462,7 @@ $("app").innerHTML=
   '<div style="width:100px;height:100px;margin:0 auto 8px;border-radius:50%;background:linear-gradient(180deg,#5A9FE8,#3A70B8);border:3px solid #2A5A90;box-shadow:0 4px 0 #2A5A90,0 8px 20px rgba(42,90,144,.15);display:flex;align-items:center;justify-content:center;overflow:hidden">'+avHTML(myAvatar,86)+'</div>'+
   '<input id="hmNm" class="inp" placeholder="Dein Name" maxlength="12" value="'+myName+'" style="max-width:200px;margin:0 auto 8px;font-size:14px;padding:10px" onchange="myName=this.value.trim()">'+
   '<button onclick="avatarEditor()" class="btn2" style="font-size:10px;padding:8px 20px">✏️ Avatar bearbeiten</button>'+
+  eloHomeBadge+
 '</div>'+
 '<div class="ct" style="display:flex;flex-direction:column;align-items:center;gap:12px">'+
   '<button onclick="initAudio();rocketStart()" style="width:220px;padding:16px 24px;border-radius:14px;background:linear-gradient(180deg,#80E858,#5ABF38);border:none;cursor:pointer;box-shadow:0 6px 0 #3A8F20,0 8px 20px rgba(90,191,56,.2),inset 0 2px 0 rgba(255,255,255,.2);font-family:var(--ft);color:#fff">'+
@@ -352,6 +470,34 @@ $("app").innerHTML=
   '<button onclick="initAudio();setupRoom()" style="width:220px;padding:16px 24px;border-radius:14px;background:linear-gradient(180deg,#FFD040,#FFB800);border:none;cursor:pointer;box-shadow:0 6px 0 #D49600,0 8px 20px rgba(255,184,0,.2),inset 0 2px 0 rgba(255,255,255,.25);font-family:var(--ft);color:#5A3A00">'+
     '<div style="font-size:22px;margin-bottom:3px">🎉</div><div style="font-size:18px;letter-spacing:2px">PARTY</div><div style="font-size:8px;font-family:var(--f);font-weight:700;opacity:.5;letter-spacing:2px;margin-top:1px">MULTIPLAYER</div></button>'+
 '</div></div>';}
+
+/* Feature 1: ELO Profile screen */
+function showEloProfile(){
+  var bak=eloGetBackup()||{};
+  var html='<div style="animation:up .4s ease;padding-top:20px">'+
+    '<div class="ct" style="margin-bottom:20px">'+
+      '<div style="font-family:var(--ft);font-size:24px;color:var(--text);letter-spacing:2px">DEIN ELO</div>'+
+      '<div style="font-size:9px;color:var(--sub);letter-spacing:3px;margin-top:2px;font-weight:700">RANKING PRO MODUS</div>'+
+    '</div>';
+  ELO_GAME_MODES.forEach(function(m){
+    var d=bak[m];
+    var elo=d?d.elo:1000;
+    var matches=d?d.matches:0;
+    var t=eloTier(elo);
+    var nm=ELO_MODE_NAMES[m];
+    html+='<div class="cd" style="margin-bottom:8px;padding:14px 16px;display:flex;align-items:center;gap:12px;border-color:'+(matches>0?t.color+'40':'var(--border)')+'">'+
+      '<div style="font-size:28px">'+t.icon+'</div>'+
+      '<div style="flex:1">'+
+        '<div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:1px">'+nm+'</div>'+
+        '<div style="font-size:10px;color:var(--sub);font-weight:600;margin-top:2px">'+(matches>0?matches+' Matches · '+t.name:'noch nicht gespielt')+'</div>'+
+      '</div>'+
+      '<div style="font-family:var(--mono);font-size:18px;font-weight:700;color:'+(matches>0?t.color:'var(--sub)')+'">'+elo+'</div>'+
+    '</div>';
+  });
+  html+='<div class="ct" style="margin-top:20px"><button class="btn2" onclick="home()">← Zurück</button></div>'+
+    '</div>';
+  $("app").innerHTML=html;
+}
 
 /* ══ AVATAR EDITOR ══ */
 function avIsOwn(t,id){return avOwn[t]&&avOwn[t].indexOf(id)>=0}
@@ -416,13 +562,13 @@ $("app").innerHTML=
   '<button class="btn btn-blue" onclick="joinScreen()" style="flex:1;max-width:160px;font-size:14px;padding:16px">→ BEITRETEN</button>'+
 '</div></div>'}
 
-function doCreate(){if(!myName||!myName.trim()){$("err").textContent="Geh zurück und gib einen Namen ein!";return}fullClientReset();so.emit("create",{name:myName,avatar:myAvatar,format:"ffa",roundsPerPhase:3},function(r){if(!r.ok)$("err").textContent=r.err})}
+function doCreate(){if(!myName||!myName.trim()){$("err").textContent="Geh zurück und gib einen Namen ein!";return}fullClientReset();so.emit("create",{name:myName,avatar:myAvatar,format:"ffa",roundsPerPhase:3,pid:myPid,eloBackup:eloGetBackup()},function(r){if(!r.ok)$("err").textContent=r.err})}
 
 function joinScreen(){if(!myName||!myName.trim()){home();return}
 $("app").innerHTML=
 '<div class="ct" style="animation:up .4s ease;padding-top:32px"><div style="width:68px;height:68px;border-radius:50%;background:var(--gold);margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 16px rgba(255,184,0,.2)">🔑</div><div style="font-size:14px;color:var(--text);letter-spacing:3px;margin-bottom:22px;font-weight:800">BEITRETEN</div><input id="ji" class="inp" placeholder="CODE" maxlength="4" style="font-family:var(--mono);letter-spacing:12px;font-size:22px;margin-bottom:14px;max-width:220px" oninput="this.value=this.value.toUpperCase()"><div id="jerr" style="font-size:12px;color:var(--red);margin-bottom:14px;font-weight:700"></div><button class="btn btn-blue" onclick="doJoin()">Beitreten</button><br><button class="btn2" style="margin-top:18px" onclick="setupRoom()">← Zurück</button></div>'}
 
-function doJoin(){var c=$("ji");if(!c||c.value.length<4){$("jerr").textContent="4-stelliger Code!";return}fullClientReset();so.emit("join",{code:c.value,name:myName,avatar:myAvatar},function(r){if(!r.ok)$("jerr").textContent=r.err})}
+function doJoin(){var c=$("ji");if(!c||c.value.length<4){$("jerr").textContent="4-stelliger Code!";return}fullClientReset();so.emit("join",{code:c.value,name:myName,avatar:myAvatar,pid:myPid,eloBackup:eloGetBackup()},function(r){if(!r.ok)$("jerr").textContent=r.err})}
 
 /* ══ LOBBY ══ */
 function toggleMode(m){
@@ -440,7 +586,12 @@ var html='<div style="animation:up .4s ease">';
 html+='<div class="ct" style="margin-bottom:20px"><button onclick="try{navigator.clipboard.writeText(\''+room.code+'\')}catch(e){}" style="display:inline-block;padding:0;border:none;background:none;cursor:pointer"><div style="position:relative;width:140px;height:140px;margin:0 auto"><div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,#E8A090,#D08878);border-bottom:4px solid #C07060;box-shadow:0 6px 0 #B06858,0 10px 28px rgba(0,0,0,.12)"></div><div style="position:absolute;inset:3px;border-radius:50%;border:2px solid rgba(255,184,0,.4)"></div><div style="position:absolute;inset:14px;border-radius:50%;background:linear-gradient(180deg,#F5E8CC,#F1E2BB);border:2px solid #E8D8B8;box-shadow:inset 0 3px 8px rgba(0,0,0,.06);display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:8px;color:#A09070;letter-spacing:3px;font-weight:700;margin-bottom:4px">CODE · TAP</div><div style="font-family:var(--ft);font-size:32px;color:#3A2A1A;letter-spacing:4px">'+room.code+'</div></div></div></button></div>';
 /* SPIELER */
 html+='<div class="cd" style="margin-bottom:14px"><div class="lb">Spieler · '+ps.filter(function(p){return p.connected}).length+'</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;justify-content:center">';
-ps.forEach(function(p){html+='<div class="pchip" style="opacity:'+(p.connected?'1':'.3')+'">'+avHTML(p.avatar,24)+'<span style="font-size:12px;font-weight:700;color:'+(p.id===room.myId?"var(--gold)":"var(--text)")+'">'+p.name+(p.id===room.myId?' <span style="font-size:7px;color:var(--green);background:rgba(52,211,153,.12);padding:2px 6px;border-radius:999px;font-weight:800">DU</span>':'')+'</span></div>'});
+ps.forEach(function(p){
+  var eloHtml=p.elo?eloBadgeHTML(p.elo):'';
+  html+='<div class="pchip" style="opacity:'+(p.connected?'1':'.3');
+  if(eloHtml)html+=';flex-direction:column;align-items:center;gap:4px;padding:8px 12px';
+  html+='">'+avHTML(p.avatar,24)+'<span style="font-size:12px;font-weight:700;color:'+(p.id===room.myId?"var(--gold)":"var(--text)")+'">'+p.name+(p.id===room.myId?' <span style="font-size:7px;color:var(--green);background:rgba(52,211,153,.12);padding:2px 6px;border-radius:999px;font-weight:800">DU</span>':'')+'</span>'+eloHtml+'</div>';
+});
 html+='</div></div>';
 if(isHost){
 /* MODUS */
@@ -481,7 +632,7 @@ html+='<div class="ct" style="margin-top:20px"><button class="btn2" onclick="hom
 $("app").innerHTML=html}
 
 /* ══ PRE-GAME ══ */
-function renderPreGame(){var ps=room.players.filter(function(p){return p.connected});var isHost=room.hostId===room.myId;$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:14px"><div style="font-family:var(--f);font-size:22px;font-weight:900;color:var(--gold);letter-spacing:4px;margin-bottom:4px">TIME<span style="color:#F43F5E;font-size:1.3em">2</span>TAP</div><div style="font-size:10px;color:var(--sub);margin-bottom:24px;font-weight:700;letter-spacing:2px">'+(room.format==="ffa"?"ALLE GEGEN ALLE":"TEAM VS TEAM")+'</div><div class="cd" style="margin-bottom:22px;text-align:left"><div style="font-size:12px;color:var(--sub);line-height:1.8;font-weight:600">Jede Runde wird ein zufälliges Spiel gedreht. Bullseye, Zeitgefühl, Memory, Reaktion oder Countdown — seid bereit für alles!</div></div><div class="cd" style="margin-bottom:24px"><div class="lb">Spieler</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:14px">'+ps.map(function(p){return'<div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--border);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)">'+avHTML(p.avatar,40)+'</div><div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">'+p.name+'</div></div>'}).join('')+'</div></div>'+(isHost?'<button class="btn" onclick="so.emit(\'startFirstRound\')">Los geht\'s</button>':'<div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div>')+'</div>'}
+function renderPreGame(){var ps=room.players.filter(function(p){return p.connected});var isHost=room.hostId===room.myId;$("app").innerHTML='<div class="ct" style="animation:pop .4s ease;padding-top:14px"><div style="font-family:var(--f);font-size:22px;font-weight:900;color:var(--gold);letter-spacing:4px;margin-bottom:4px">TIME<span style="color:#F43F5E;font-size:1.3em">2</span>TAP</div><div style="font-size:10px;color:var(--sub);margin-bottom:24px;font-weight:700;letter-spacing:2px">'+(room.format==="ffa"?"ALLE GEGEN ALLE":"TEAM VS TEAM")+'</div><div class="cd" style="margin-bottom:22px;text-align:left"><div style="font-size:12px;color:var(--sub);line-height:1.8;font-weight:600">Jede Runde wird ein zufälliges Spiel gedreht. Bullseye, Zeitgefühl, Memory, Reaktion oder Countdown — seid bereit für alles!</div></div><div class="cd" style="margin-bottom:24px"><div class="lb">Spieler</div><div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-top:14px">'+ps.map(function(p){return'<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:2px solid var(--border);background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.06)">'+avHTML(p.avatar,40)+'</div><div style="font-size:9px;color:var(--sub);font-weight:700;letter-spacing:1px">'+p.name+'</div>'+(p.elo?eloBadgeHTML(p.elo):'')+'</div>'}).join('')+'</div></div>'+(isHost?'<button class="btn" onclick="so.emit(\'startFirstRound\')">Los geht\'s</button>':'<div style="font-size:12px;color:var(--sub);font-weight:700;animation:breathe 2s ease infinite">Warte auf den Host...</div>')+'</div>'}
 
 /* ══ SPIN WHEEL ══ */
 
