@@ -6,7 +6,7 @@ const rooms=new Map();
 const CH="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function mkCode(){let c;do{c="";for(let i=0;i<4;i++)c+=CH[Math.floor(Math.random()*CH.length)]}while(rooms.has(c));return c}
 function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a}
-const GAME_MODES=["bullseye","timesense","memory","reaction","countdown","tapfrenzy"];
+const GAME_MODES=["bullseye","reaction","tapfrenzy"];
 
 /* ═══════════════════════════════════════════
    ELO SYSTEM (Feature 1)
@@ -499,7 +499,7 @@ function makeRoom(code,sk,name,avatar,format,roundsPerPhase){
   return{code,phase:"lobby",mode:null,format:format||"ffa",
     roundsPerPhase:roundsPerPhase||3,currentRound:0,currentPhaseRound:0,
     wheelEnabled:true,selectedModes:[...GAME_MODES],
-    hardcoreMode:false, /* Feature 8 */
+    hardcoreMode:true, /* Default = on */
     players:[{id:sk.id,name,avatar,team:null,connected:true,eliminated:false}],
     hostId:sk.id,roundData:null,results:null,subs:{},teamSubs:{},
     scores:{},phaseScores:{},finalScores:null,zeitTimers:[],modeHistory:[],playerStates:{}}
@@ -904,7 +904,10 @@ io.on("connection",sk=>{
   // After spin animation → start prediction phase
   sk.on("beginPlay",()=>{
     const f=findRoom(sk.id);if(!f)return;const{room}=f;if(room.hostId!==sk.id)return;
-    /* Feature 3: enter prediction phase first */
+    /* Predictor disabled → directly to play */
+    startActualPlay(room);
+    return;
+    /* legacy code below disabled */
     const opts=getPredictionOptions(room.mode);
     if(opts){
       room.phase="prediction";
