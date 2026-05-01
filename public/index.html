@@ -1668,7 +1668,7 @@ var myCoins=350;
 /* ═══════════════════════════════════════════
    FEATURE 1: ELO CLIENT STATE
    ═══════════════════════════════════════════ */
-var ELO_GAME_MODES=["bullseye","timesense","memory","reaction","countdown","tapfrenzy"];
+var ELO_GAME_MODES=["bullseye","reaction","tapfrenzy"];
 var ELO_MODE_NAMES={bullseye:"Bullseye",timesense:"Zeitgefühl",memory:"Memory",reaction:"Reaktion",countdown:"Countdown",tapfrenzy:"Tap Frenzy"};
 function eloGetPid(){
   var p=null;
@@ -3882,7 +3882,7 @@ function doJoin(){var c=$("ji");if(!c||c.value.length<4){$("jerr").textContent="
 
 /* ══ LOBBY ══ */
 function toggleMode(m){
-var sm=room.selectedModes||["bullseye","timesense","memory","reaction","countdown","tapfrenzy"];
+var sm=room.selectedModes||["bullseye","reaction","tapfrenzy"];
 var idx=sm.indexOf(m);
 if(idx>=0&&sm.length>1)sm.splice(idx,1);
 else if(idx<0)sm.push(m);
@@ -3891,7 +3891,7 @@ so.emit("updateSettings",{selectedModes:sm})}
 function renderLobby(){var isHost=room.hostId===room.myId,ps=room.players||[];
 if(!window._bgParticleInterval)startBgParticles(0.6);
 var wh=room.wheelEnabled!==false;
-var sm=room.selectedModes||["bullseye","timesense","memory","reaction","countdown","tapfrenzy"];
+var sm=room.selectedModes||["bullseye","reaction","tapfrenzy"];
 var html='<div style="animation:up .4s ease">';
 /* CODE */
 html+='<div class="ct" style="margin-bottom:24px"><div id="codeHero" style="position:relative;padding:48px 12px 36px;cursor:pointer;user-select:none" onmousedown="codeHeroDown(event)" ontouchstart="codeHeroDown(event)" onmouseup="codeHeroUp()" ontouchend="codeHeroUp()" onmouseleave="codeHeroUp()">'+
@@ -3971,7 +3971,7 @@ html+='</div>';
 /* MODE PICKER (when wheel off) */
 if(!wh){
 html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;justify-content:center">';
-["bullseye","timesense","memory","reaction","countdown","tapfrenzy"].forEach(function(mid){
+["bullseye","reaction","tapfrenzy"].forEach(function(mid){
 var mi=MI[mid];var on=sm.indexOf(mid)>=0;
 html+='<div onclick="toggleMode(\''+mid+'\')" style="padding:10px 14px;border-radius:16px;cursor:pointer;display:flex;align-items:center;gap:6px;border:'+(on?"2px solid "+mi.color:"1.5px solid var(--border)")+';background:'+(on?mi.color+"10":"var(--surf)")+';transition:all .2s"><span style="font-size:16px">'+mi.icon+'</span><span style="font-size:10px;font-weight:800;color:'+(on?mi.color:"var(--sub)")+';letter-spacing:.5px">'+mi.name.toUpperCase()+'</span></div>'});
 html+='</div>'}
@@ -5122,7 +5122,10 @@ setTimeout(function(){
       },2050);
     }
   },800);
-  setTimeout(function(){var nav=$("resNav");if(nav){nav.style.display="block";nav.style.animation="fadeIn .5s ease"}},2500);
+  setTimeout(function(){var nav=$("resNav");if(nav){nav.style.display="block";nav.style.animation="fadeIn .5s ease"}
+  /* AUTO-ADVANCE: Host emits nextRound automatically after short delay */
+  if(room&&room.hostId===room.myId){setTimeout(function(){if(room&&room.phase==="results")so.emit("nextRound")},1500)}
+  },2500);
 },totalDelay);
 }
 
